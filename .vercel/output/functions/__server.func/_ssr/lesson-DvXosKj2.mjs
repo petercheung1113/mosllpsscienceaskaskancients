@@ -1,4 +1,4 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/lesson-Deifb3Y-.js
+//#region node_modules/.nitro/vite/services/ssr/assets/lesson-DvXosKj2.js
 var LENS_GLOSS = {
 	經驗: "古人試出來的",
 	科技: "解決問題的方法",
@@ -16,7 +16,7 @@ var CHARACTERS = [
 		id: "fire",
 		name: "阿火",
 		role: "生火的人",
-		voiceId: "eve",
+		voiceId: "luna",
 		portrait: "/ancients/fire.jpg",
 		portraitAlt: "阿火在山洞口用兩條木棒鑽木取火",
 		greeting: "你好，我是阿火。天一冷，我就在山洞口生火取暖，也用火煮食和照明。你想問我古時怎樣生火嗎？",
@@ -41,7 +41,7 @@ var CHARACTERS = [
 		id: "wheel",
 		name: "阿輪",
 		role: "造車的人",
-		voiceId: "rex",
+		voiceId: "leo",
 		portrait: "/ancients/wheel.jpg",
 		portraitAlt: "阿輪站在獨輪車旁，車斗裡有一塊大石",
 		greeting: "我是阿輪。大石抱不動，我就做了一輛獨輪車。輪子一轉，重物就跟我走。你想知道我怎樣搬東西嗎？",
@@ -66,7 +66,7 @@ var CHARACTERS = [
 		id: "bridge",
 		name: "阿橋",
 		role: "搭橋的人",
-		voiceId: "sal",
+		voiceId: "castor",
 		portrait: "/ancients/bridge.jpg",
 		portraitAlt: "阿橋站在橫過河面的木橋上",
 		greeting: "我是阿橋。河水擋着去路，游過去又危險。我用樹幹搭了一道木橋。你想問我怎樣過河嗎？",

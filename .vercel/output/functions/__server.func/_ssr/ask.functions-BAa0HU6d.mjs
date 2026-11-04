@@ -1,6 +1,6 @@
 import { i as getRequest, n as TSS_SERVER_FUNCTION, t as createServerFn } from "./ssr.mjs";
-import { a as isLens, i as isCharacterId, r as getCharacter, t as CHARACTERS } from "./lesson-Deifb3Y-.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/ask.functions-GoPjm2Lb.js
+import { a as isLens, i as isCharacterId, r as getCharacter, t as CHARACTERS } from "./lesson-DvXosKj2.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/ask.functions-BAa0HU6d.js
 var createServerRpc = (serverFnMeta, splitImportFn) => {
 	const url = "/_serverFn/" + serverFnMeta.id;
 	return Object.assign(splitImportFn, {
@@ -52,24 +52,11 @@ function readChat(input) {
 		messages
 	};
 }
-var CAMP_ASIDES = [
-	"小孩子把乾草編成圓球，在平地上踢來踢去。",
-	"小弟弟比賽誰先把一小筐野果提回山洞。",
-	"孩子們在淺水邊揀又扁又滑的石，看誰的石在水面跳得遠。",
-	"天黑時長輩圍著火講野獸怎樣走近營地，孩子們靠在大人腿上聽。",
-	"孩子只准撿細柴，粗木要大人來劈。",
-	"下雨時大家擠在洞口，用泥捏小獸，等它在火旁慢慢乾。",
-	"阿橋讓孩子站在橋頭數原木，但不准走到橋中間。",
-	"阿輪有時讓孩子扶著空車的把手，感覺輪子一轉就輕了。",
-	"傍晚把烤魚分給最小的孩子先吃。",
-	"孩子學鳥叫，看誰先把河邊的雀引過來。"
-];
 function systemPrompt(id) {
 	const person = getCharacter(id);
 	const others = CHARACTERS.filter((item) => item.id !== id).map((item) => `${item.name}（${item.method}：${item.science}）`).join("、");
 	const facts = CHARACTERS.map((item) => `- ${item.problem} → 科技方法「${item.method}」。科學：${item.science}。${item.scienceKid} ${item.knew} 模仿大自然：${item.nature} 科學促進科技：${item.scienceToTech} 科技推動科學：${item.techToScience}`).join("\n");
-	const fresh = CAMP_ASIDES[Math.floor(Math.random() * CAMP_ASIDES.length)];
-	return `你是香港小學常識課的古人夥伴，現在扮演「${person.name}」。用繁體中文，語氣親切，句子短，用詞淺白，像跟小四、小五學生聊天。用「甚麼」「為甚麼」「怎樣」。不要用大陸用語，也不要寫成全篇粵語（避免嘅、咗、喺）。
+	return `你是香港小學科學課的古人夥伴，現在扮演「${person.name}」。用繁體中文，語氣親切，句子短，用詞淺白，像跟小四、小五學生聊天。用「甚麼」「為甚麼」「怎樣」。不要用大陸用語，也不要寫成全篇粵語（避免嘅、咗、喺）。
 
 ${person.persona}
 
@@ -81,25 +68,34 @@ ${person.persona}
 ${facts}
 科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。科學發現能促進科技發展，科技發展亦能推動科學進步。不要每句都背這句。例子優先用上面三項。
 
-你活在古代，不認識學生時代的東西。聽到打機、遊戲機、手機、電腦、電視、汽車、飛機、電車、雪糕、汽水這類現代詞，不要假裝知道，也不要說「很好玩吧」。先問「甚麼是……？」，再用一件營地小事對照，最後請學生解釋給你聽。
+你活在古代，不認識學生時代的東西。聽到打機、遊戲機、手機、電腦、電視、汽車、飛機、電車、漢堡包、雪糕、汽水、麵包、糖果這類現代詞，不要假裝知道，也不要說「很好玩吧」。第一句就問「甚麼是……？」，再用同一類的一件營地生活對照，最後請學生解釋給你聽。
 
-這次若要對照營地，只用這一件，寫成新句子，不要照抄：${fresh}
+對照必須貼題，不可以岔開去講不相干的事。先判斷學生這一問屬於哪一類，只從那一類挑一件，寫成新句子：
+- 食物、食、餓、味道：河魚、小獸、野果、漿果、堅果、植物的根，用火烤熟；傍晚把烤魚分給最小的孩子。不要改講玩耍。
+- 玩耍、遊戲、無聊：編草球踢、淺水邊跳石、追著玩、學鳥叫引雀。不要改講食物。
+- 出門、交通、車、遠：走路、獨輪車推重物、木橋過河。
+- 衣服、冷、熱：獸皮，或用植物編成的衣服。
+- 屋、睡覺、下雨：睡在山洞口；下雨擠在洞口。
+- 飲水、渴：河邊取水，阿火把水燒開再喝。
+同一類裡如果上一句用過，這次換同一類的另一件。
 
-嚴禁重複。不要再寫這句或近似句：「我活在河邊營地，沒有電，天黑只靠火堆照明取暖。小孩子在草地上追著玩、幫忙撿柴，從不靠近火心。」前面已經答過的句子、例子、開場，這次都要換掉。每次換一個生活細節，換一種講法。
+反例：學生說「我平時食漢堡包」，不可以回答「孩子學鳥叫，看誰先把河邊的雀引過來」。那和食物無關。應先問「甚麼是漢堡包？」，再說自己吃烤魚或野果，然後請學生講漢堡包是甚麼。
 
-營地生活（只在問到時挑一兩樣，不要每答都倒出來）：
-- 食物：河魚、小獸、野果、漿果、堅果、植物的根。用火烤熟。沒有白米、麵包、糖果、牛奶、汽水。
+嚴禁重複。不要再寫這句或近似句：「我活在河邊營地，沒有電，天黑只靠火堆照明取暖。小孩子在草地上追著玩、幫忙撿柴，從不靠近火心。」前面已經答過的句子、例子、開場，這次都要換掉。
+
+營地生活（只在問到時，按上面的類別挑一件，不要每答都倒出來）：
+- 食物：河魚、小獸、野果、漿果、堅果、植物的根。用火烤熟。沒有白米、麵包、糖果、牛奶、汽水、漢堡包。
 - 飲水：河邊取水，阿火把水燒開再喝。
 - 衣服：獸皮和植物編的。
 - 居住：睡在山洞口。
 - 一天：天亮找食物、砍柴、搬石頭、看橋；天黑圍火講故事。
 - 害怕：急流、黑夜、野獸、火熄了。
-- 小孩子：追著玩、撿細柴、看火但不走近火心、編草球、在淺水邊揀石。沒有遊戲機。
+- 小孩子玩耍：追著玩、撿細柴、看火但不走近火心、編草球、在淺水邊揀石、學鳥叫。沒有遊戲機。
 
 回答規則：
 - 用第一人稱「我」。
 - 先直接回答學生這一問。食、衣、住、玩、害怕、家人、天氣、動物、身體、感受，都要認真答，不要說「我只懂生火、搬運、過河」。
-- 學生提到你沒聽過的現代事物時，第一句就要問「甚麼是……？」，不要評論它好不好玩，最後請學生講給你聽。對照只用上面指定的那一件。
+- 學生提到你沒聽過的現代事物時，第一句就要問「甚麼是……？」，不要評論它好不好玩，最後請學生講給你聽。中間那句對照必須和學生講的是同一類，禁止插入不相干的活動。
 - 問到發明或科學時，才把「我當時靠經驗知道的」和「後來科學家才說明的原理」分開講。生活題不必硬拉原理。
 - 可以反問一句。
 - 只有不適合小學生的內容才不答，並溫柔請他問營地的事。
@@ -131,11 +127,12 @@ function parseModel(raw) {
 		return null;
 	}
 }
-async function callGrok(apiKey, messages, jsonMode) {
+async function callGrok(apiKey, messages, jsonMode, temperature = .5, maxTokens = 400, timeoutMs = 6500) {
 	const body = {
-		model: "grok-4.5",
-		temperature: .8,
-		max_tokens: 700,
+		model: "grok-4.3",
+		reasoning_effort: "none",
+		temperature,
+		max_tokens: maxTokens,
 		messages
 	};
 	if (jsonMode) body.response_format = { type: "json_object" };
@@ -146,8 +143,52 @@ async function callGrok(apiKey, messages, jsonMode) {
 			Authorization: `Bearer ${apiKey}`
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(28e3)
+		signal: AbortSignal.timeout(timeoutMs)
 	});
+}
+function plainReply(raw) {
+	const text = raw.replace(/```[\s\S]*?```/g, " ").replace(/\s+/g, " ").trim();
+	if (text.length < 8 || text.startsWith("{") || text.startsWith("[")) return null;
+	return {
+		reply: text.slice(0, 220),
+		lens: "經驗",
+		think: ""
+	};
+}
+function fallbackReply(id, question) {
+	const food = /食|餓|飯|漢堡|肉|菜|野果|水果|甜|味|糕|糖/.test(question);
+	const play = /玩|遊戲|打機|無聊/.test(question);
+	const wear = /衣|穿|冷|熱|鞋/.test(question);
+	const home = /屋|睡|雨|住|洞/.test(question);
+	const water = /喝水|飲水|渴|河水/.test(question);
+	const travel = /汽車|飛機|船|行路|出門|坐車/.test(question);
+	let reply = "";
+	if (food) reply = "甚麼是你說的那種食物？我沒吃過。我肚子餓就烤河魚，也採野果和堅果，傍晚把烤魚分給最小的孩子。你可以講給我聽嗎？";
+	else if (play) reply = "甚麼是你說的那種玩法？我們的孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。你可以講給我聽嗎？";
+	else if (wear) reply = "我們穿獸皮，也用植物編成衣服。天冷就靠近火堆。你說的衣服是怎樣的？";
+	else if (home) reply = "我們睡在山洞口。下雨就擠在洞口，看着火慢慢燒。你住的地方是怎樣的？";
+	else if (water) reply = id === "fire" ? "我們在河邊取水，我把水燒開再喝。你說的是甚麼水？" : "我們在河邊取水，阿火把水燒開再喝。你說的是甚麼水？";
+	else if (travel) reply = "我們靠雙腳走路。重的東西用獨輪車推，過河就走木橋。你說的是怎樣走？";
+	else if (id === "fire") reply = "我在山洞口鑽木取火，用來取暖、烤魚和照明。你想問生火，還是告訴我你那邊的生活？";
+	else if (id === "wheel") reply = "大石抱不動，我就做了一輛獨輪車，輪子一轉就輕了。你想問搬東西，還是告訴我你那邊的生活？";
+	else reply = "河水擋着去路，我用樹幹搭了木橋，人可以走過去。你想問過河，還是告訴我你那邊的生活？";
+	return {
+		reply,
+		lens: "經驗",
+		think: "你那邊是怎樣的？"
+	};
+}
+async function completeAsk(apiKey, messages) {
+	const response = await callGrok(apiKey, messages, true);
+	if (response.status === 400) {
+		const plain = await callGrok(apiKey, messages, false, .5, 400, 5e3);
+		if (!plain.ok) return null;
+		const text = (await plain.json()).choices?.[0]?.message?.content ?? "";
+		return parseModel(text) ?? plainReply(text);
+	}
+	if (!response.ok) return null;
+	const text = (await response.json()).choices?.[0]?.message?.content ?? "";
+	return parseModel(text) ?? plainReply(text);
 }
 var askAncient_createServerFn_handler = createServerRpc({
 	id: "9f1adc45fff0dccd56d7ad46a8d2dc6fe129fbac034eb0f1b077032f2b05e1ac",
@@ -156,50 +197,49 @@ var askAncient_createServerFn_handler = createServerRpc({
 }, (opts) => askAncient.__executeServer(opts));
 var askAncient = createServerFn({ method: "POST" }).validator(readChat).handler(askAncient_createServerFn_handler, async ({ data }) => {
 	const apiKey = process.env.XAI_API_KEY;
-	if (!apiKey) return {
-		ok: false,
-		error: "這位古人暫時不能回答，請稍後再試。"
-	};
+	if (!apiKey) {
+		const backup = fallbackReply(data.characterId, data.messages[data.messages.length - 1]?.content ?? "");
+		return {
+			ok: true,
+			reply: backup.reply,
+			lens: backup.lens,
+			think: backup.think
+		};
+	}
 	if (!allowRequest(clientIp())) return {
 		ok: false,
 		error: "問得太密了，休息幾秒再問。"
 	};
-	const person = getCharacter(data.characterId);
+	const question = data.messages[data.messages.length - 1]?.content ?? "";
 	const messages = [{
 		role: "system",
 		content: systemPrompt(data.characterId)
-	}, ...data.messages.slice(-8)];
-	let response;
+	}, ...data.messages.slice(-6)];
+	const started = Date.now();
 	try {
-		response = await callGrok(apiKey, messages, true);
-		if (response.status === 400) response = await callGrok(apiKey, messages, false);
-		else if (response.status === 429 || response.status >= 500) response = await callGrok(apiKey, messages, true);
-	} catch {
-		return {
-			ok: false,
-			error: `${person.name}聽不清楚，請再送出一次。`
+		const first = await completeAsk(apiKey, messages);
+		if (first) return {
+			ok: true,
+			reply: first.reply,
+			lens: first.lens,
+			think: first.think
 		};
-	}
-	if (!response.ok) {
-		console.error("xai chat failed", response.status);
-		return {
-			ok: false,
-			error: `${person.name}聽不清楚，請再送出一次。`
+	} catch {}
+	if (Date.now() - started < 4e3) try {
+		const second = await completeAsk(apiKey, messages);
+		if (second) return {
+			ok: true,
+			reply: second.reply,
+			lens: second.lens,
+			think: second.think
 		};
-	}
-	const parsed = parseModel((await response.json()).choices?.[0]?.message?.content ?? "");
-	if (!parsed) {
-		console.error("xai chat unparsed");
-		return {
-			ok: false,
-			error: `${person.name}說得太亂，請再問一次。`
-		};
-	}
+	} catch {}
+	const backup = fallbackReply(data.characterId, question);
 	return {
 		ok: true,
-		reply: parsed.reply,
-		lens: parsed.lens,
-		think: parsed.think
+		reply: backup.reply,
+		lens: backup.lens,
+		think: backup.think
 	};
 });
 function readSpeech(input) {
@@ -207,12 +247,32 @@ function readSpeech(input) {
 	const data = input;
 	if (typeof data.characterId !== "string" || !isCharacterId(data.characterId)) throw new Error("找不到這位古人");
 	if (typeof data.text !== "string") throw new Error("未能朗讀");
-	const text = data.text.replace(/\s+/g, " ").trim().slice(0, 180);
+	const text = data.text.replace(/\s+/g, " ").trim().slice(0, 320);
 	if (!text) throw new Error("未能朗讀");
 	return {
 		characterId: data.characterId,
 		text
 	};
+}
+function cleanSpoken(raw) {
+	return raw.replace(/```[\s\S]*?```/g, " ").replace(/^["「]|["」]$/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
+}
+async function spokenCantonese(apiKey, name, text) {
+	try {
+		const response = await callGrok(apiKey, [{
+			role: "system",
+			content: `你把書面中文改成香港小學生聽得明的口語廣東話，只供朗讀。保持原意，不要加新資料，不要用英文。用「係、喺、嘅、咩、唔、冇、咗、睇、食、佢、畀、啲、咁、點解、噉」。說話人是「${name}」，保持第一人稱。只輸出要讀出的句子。`
+		}, {
+			role: "user",
+			content: text
+		}], false, .3);
+		if (!response.ok) return text;
+		const spoken = cleanSpoken((await response.json()).choices?.[0]?.message?.content ?? "");
+		if (spoken.length < 4) return text;
+		return spoken;
+	} catch {
+		return text;
+	}
 }
 var speakAncient_createServerFn_handler = createServerRpc({
 	id: "368fea765894ae01c83fc33b26a7cb9b62d940a221cabb32e82004634bfb3c04",
@@ -230,6 +290,7 @@ var speakAncient = createServerFn({ method: "POST" }).validator(readSpeech).hand
 		error: "請等一等再聽"
 	};
 	const person = getCharacter(data.characterId);
+	const spoken = await spokenCantonese(apiKey, person.name, data.text);
 	try {
 		const response = await fetch("https://api.x.ai/v1/tts", {
 			method: "POST",
@@ -238,9 +299,9 @@ var speakAncient = createServerFn({ method: "POST" }).validator(readSpeech).hand
 				Authorization: `Bearer ${apiKey}`
 			},
 			body: JSON.stringify({
-				text: data.text,
+				text: spoken,
 				voice_id: person.voiceId,
-				language: "zh"
+				language: "yue"
 			}),
 			signal: AbortSignal.timeout(28e3)
 		});

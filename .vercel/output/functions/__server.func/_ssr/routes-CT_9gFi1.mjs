@@ -1,9 +1,9 @@
 import { i as __toESM } from "../_runtime.mjs";
 import { U as isRedirect, b as require_jsx_runtime, q as require_react, y as useRouter } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } from "./ssr.mjs";
-import { a as isLens, i as isCharacterId, n as LENS_GLOSS, r as getCharacter, t as CHARACTERS } from "./lesson-Deifb3Y-.mjs";
-import { a as BookOpen, i as RotateCcw, r as Send, t as Volume2 } from "../_libs/lucide-react.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-CI-PjYFb.js
+import { a as isLens, i as isCharacterId, n as LENS_GLOSS, r as getCharacter, t as CHARACTERS } from "./lesson-DvXosKj2.mjs";
+import { i as BookOpen, n as Send, r as RotateCcw } from "../_libs/lucide-react.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-CT_9gFi1.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function useServerFn(serverFn) {
@@ -63,7 +63,7 @@ function readSpeech(input) {
 	const data = input;
 	if (typeof data.characterId !== "string" || !isCharacterId(data.characterId)) throw new Error("找不到這位古人");
 	if (typeof data.text !== "string") throw new Error("未能朗讀");
-	const text = data.text.replace(/\s+/g, " ").trim().slice(0, 180);
+	const text = data.text.replace(/\s+/g, " ").trim().slice(0, 320);
 	if (!text) throw new Error("未能朗讀");
 	return {
 		characterId: data.characterId,
@@ -72,6 +72,7 @@ function readSpeech(input) {
 }
 var speakAncient = createServerFn({ method: "POST" }).validator(readSpeech).handler(createSsrRpc("368fea765894ae01c83fc33b26a7cb9b62d940a221cabb32e82004634bfb3c04"));
 var STORAGE_KEY = "ancient-camp-v1";
+var SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 function greeting(person) {
 	return {
 		id: `greet-${person.id}`,
@@ -94,20 +95,20 @@ function lensClass(lens) {
 }
 var FILMS = {
 	idle: {
-		src: "/ancients/scene-idle.mp4?v=12",
-		poster: "/ancients/poster-idle.jpg?v=12"
+		src: "/ancients/scene-idle.mp4?v=13",
+		poster: "/ancients/poster-idle.jpg?v=13"
 	},
 	fire: {
-		src: "/ancients/scene-fire.mp4?v=12",
-		poster: "/ancients/poster-fire.jpg?v=12"
+		src: "/ancients/scene-fire.mp4?v=13",
+		poster: "/ancients/poster-fire.jpg?v=13"
 	},
 	wheel: {
-		src: "/ancients/scene-wheel.mp4?v=12",
-		poster: "/ancients/poster-wheel.jpg?v=12"
+		src: "/ancients/scene-wheel.mp4?v=13",
+		poster: "/ancients/poster-wheel.jpg?v=13"
 	},
 	bridge: {
-		src: "/ancients/scene-bridge.mp4?v=12",
-		poster: "/ancients/poster-bridge.jpg?v=12"
+		src: "/ancients/scene-bridge.mp4?v=13",
+		poster: "/ancients/poster-bridge.jpg?v=13"
 	}
 };
 function CampFilm({ active, onReady }) {
@@ -186,11 +187,18 @@ function CampApp() {
 	const [pendingId, setPendingId] = (0, import_react.useState)(null);
 	const [error, setError] = (0, import_react.useState)(null);
 	const [lessonOpen, setLessonOpen] = (0, import_react.useState)(false);
-	const [speakingId, setSpeakingId] = (0, import_react.useState)(null);
 	const [speakError, setSpeakError] = (0, import_react.useState)(null);
 	const [ready, setReady] = (0, import_react.useState)(false);
 	const inputRef = (0, import_react.useRef)(null);
 	const audioRef = (0, import_react.useRef)(null);
+	const speakGen = (0, import_react.useRef)(0);
+	const characterRef = (0, import_react.useRef)(null);
+	const chatGen = (0, import_react.useRef)({
+		fire: 0,
+		wheel: 0,
+		bridge: 0
+	});
+	characterRef.current = characterId;
 	const booted = filmReady;
 	const person = characterId ? getCharacter(characterId) : null;
 	const messages = characterId ? threads[characterId] : [];
@@ -228,6 +236,12 @@ function CampApp() {
 			audioRef.current?.pause();
 		};
 	}, []);
+	function primeSpeech() {
+		const audio = audioRef.current ?? new Audio();
+		audioRef.current = audio;
+		audio.src = SILENT_WAV;
+		audio.play().catch(() => void 0);
+	}
 	function select(id) {
 		setCharacterId(id);
 		setLessonOpen(false);
@@ -235,27 +249,28 @@ function CampApp() {
 		setSpeakError(null);
 		setHint("");
 		audioRef.current?.pause();
-		setSpeakingId(null);
+		speakGen.current += 1;
 	}
 	function resumeWork() {
 		audioRef.current?.pause();
-		setSpeakingId(null);
+		speakGen.current += 1;
 		setCharacterId(null);
 		setError(null);
 	}
-	async function run(target, history) {
+	async function run(target, history, gen) {
 		setPendingId(target);
 		setError(null);
 		try {
 			const result = await ask({ data: {
 				characterId: target,
-				messages: history.slice(-8).map(({ role, content }) => ({
+				messages: history.slice(-6).map(({ role, content }) => ({
 					role,
 					content
 				}))
 			} });
+			if (chatGen.current[target] !== gen) return;
 			if (!result.ok) {
-				setError(result.error);
+				if (characterRef.current === target) setError(result.error);
 				return;
 			}
 			const reply = {
@@ -269,10 +284,11 @@ function CampApp() {
 				...prev,
 				[target]: [...history, reply].slice(-20)
 			}));
+			if (characterRef.current === target) playSpoken(target, reply.content);
 		} catch {
-			setError(`${getCharacter(target).name}聽不清楚，請再送出一次。`);
+			if (chatGen.current[target] === gen && characterRef.current === target) setError(`${getCharacter(target).name}聽不清楚，請再送出一次。`);
 		} finally {
-			setPendingId(null);
+			if (chatGen.current[target] === gen) setPendingId(null);
 		}
 	}
 	function submit(text) {
@@ -284,98 +300,97 @@ function CampApp() {
 			content: trimmed
 		};
 		const history = [...threads[characterId], userMsg].slice(-20);
+		const gen = ++chatGen.current[characterId];
 		setThreads((prev) => ({
 			...prev,
 			[characterId]: history
 		}));
 		setDraft("");
 		setHint("");
-		run(characterId, history);
+		primeSpeech();
+		run(characterId, history, gen);
 	}
 	function retry() {
 		if (pendingId || !characterId) return;
 		const history = threads[characterId];
 		if (history[history.length - 1]?.role !== "user") return;
-		run(characterId, history);
+		const gen = ++chatGen.current[characterId];
+		primeSpeech();
+		run(characterId, history, gen);
 	}
 	function resetChat() {
 		if (pendingId || !characterId || !person) return;
+		chatGen.current[characterId] += 1;
 		audioRef.current?.pause();
-		setSpeakingId(null);
+		speakGen.current += 1;
 		setError(null);
 		setThreads((prev) => ({
 			...prev,
 			[characterId]: [greeting(person)]
 		}));
 	}
-	async function readAloud(message) {
-		if (!characterId) return;
-		if (speakingId === message.id) {
-			audioRef.current?.pause();
-			setSpeakingId(null);
-			return;
-		}
+	async function playSpoken(target, text) {
+		if (characterRef.current !== target) return;
+		const gen = ++speakGen.current;
 		audioRef.current?.pause();
 		setSpeakError(null);
-		setSpeakingId(message.id);
 		try {
 			const result = await speak({ data: {
-				characterId,
-				text: message.content
+				characterId: target,
+				text
 			} });
+			if (gen !== speakGen.current || characterRef.current !== target) return;
 			if (!result.ok) {
 				setSpeakError(result.error);
-				setSpeakingId(null);
 				return;
 			}
-			const audio = new Audio(`data:${result.mime};base64,${result.audio}`);
-			audioRef.current?.pause();
+			const audio = audioRef.current ?? new Audio();
 			audioRef.current = audio;
-			audio.onended = () => setSpeakingId(null);
+			audio.pause();
+			audio.src = `data:${result.mime};base64,${result.audio}`;
 			await audio.play();
 		} catch {
-			setSpeakError("暫時未能朗讀");
-			setSpeakingId(null);
+			if (gen === speakGen.current) setSpeakError("暫時未能朗讀");
 		}
 	}
 	const spots = {
 		fire: {
 			hit: {
-				left: "6%",
-				top: "42%",
-				width: "20%",
-				height: "36%"
+				left: "3%",
+				top: "40%",
+				width: "18%",
+				height: "44%"
 			},
 			bubble: {
-				left: "27%",
-				top: "62%",
-				width: "min(20%, 190px)"
+				left: "24%",
+				top: "48%",
+				width: "min(22%, 200px)"
 			},
 			doing: "生火中"
 		},
 		wheel: {
 			hit: {
-				left: "60%",
-				top: "34%",
-				width: "15%",
-				height: "46%"
+				left: "54%",
+				top: "42%",
+				width: "14%",
+				height: "42%"
 			},
 			bubble: {
-				left: "40%",
-				top: "42%",
-				width: "min(20%, 190px)"
+				left: "32%",
+				top: "22%",
+				width: "min(22%, 200px)"
 			},
 			doing: "推大石"
 		},
 		bridge: {
 			hit: {
-				left: "74%",
-				top: "28%",
-				width: "18%",
-				height: "44%"
+				left: "76%",
+				top: "36%",
+				width: "16%",
+				height: "42%"
 			},
 			bubble: {
-				left: "46%",
+				left: "50%",
 				top: "12%",
 				width: "min(22%, 200px)"
 			},
@@ -416,7 +431,7 @@ function CampApp() {
 									className: "pointer-events-none absolute top-3 left-3 z-10 rounded-2xl bg-sheet/90 px-3 py-2",
 									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 										className: "text-sm font-medium text-meadow",
-										children: "小學常識 · 科學與科技"
+										children: "小學科學 · 科學與科技"
 									}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
 										className: "font-display text-3xl leading-none text-ink",
 										children: "古人問一問"
@@ -503,35 +518,22 @@ function CampApp() {
 											}) : null,
 											/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 												className: "mt-1 flex flex-wrap items-center gap-1",
-												children: [
-													latest && !waiting ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
-														type: "button",
-														onClick: () => void readAloud(latest),
-														"aria-label": `聽${person.name}說`,
-														className: "inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm text-meadow focus-visible:ring-2 focus-visible:ring-meadow",
-														children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Volume2, {
-															className: "size-4",
-															"aria-hidden": true
-														}), speakingId === latest.id ? "停止" : "聽一聽"]
-													}) : null,
-													/* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-														type: "button",
-														onClick: resumeWork,
-														className: "min-h-11 rounded-full px-2 text-sm focus-visible:ring-2 focus-visible:ring-meadow",
-														children: "繼續工作"
-													}),
-													/* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-														type: "button",
-														onClick: resetChat,
-														disabled: Boolean(pendingId),
-														"aria-label": `重置和${person.name}的對話`,
-														className: "inline-flex size-11 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-meadow disabled:opacity-50",
-														children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, {
-															className: "size-4",
-															"aria-hidden": true
-														})
+												children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+													type: "button",
+													onClick: resumeWork,
+													className: "min-h-11 rounded-full px-2 text-sm focus-visible:ring-2 focus-visible:ring-meadow",
+													children: "繼續工作"
+												}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+													type: "button",
+													onClick: resetChat,
+													disabled: Boolean(pendingId),
+													"aria-label": `重置和${person.name}的對話`,
+													className: "inline-flex size-11 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-meadow disabled:opacity-50",
+													children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, {
+														className: "size-4",
+														"aria-hidden": true
 													})
-												]
+												})]
 											})
 										]
 									})]
