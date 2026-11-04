@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, RotateCcw, Send } from "lucide-react";
-import { askAncient, speakAncient } from "@/lib/ask.functions";
+import { askAncient } from "@/lib/ask.functions";
 import {
   CHARACTERS,
   LENS_GLOSS,
@@ -51,10 +51,10 @@ function lensClass(lens: Lens): string {
 }
 
 const FILMS = {
-  idle: { src: "/ancients/scene-idle.mp4?v=13", poster: "/ancients/poster-idle.jpg?v=13" },
-  fire: { src: "/ancients/scene-fire.mp4?v=13", poster: "/ancients/poster-fire.jpg?v=13" },
-  wheel: { src: "/ancients/scene-wheel.mp4?v=13", poster: "/ancients/poster-wheel.jpg?v=13" },
-  bridge: { src: "/ancients/scene-bridge.mp4?v=13", poster: "/ancients/poster-bridge.jpg?v=13" },
+  idle: { src: "/ancients/scene-idle.mp4?v=15", poster: "/ancients/poster-idle.jpg?v=15" },
+  fire: { src: "/ancients/scene-fire.mp4?v=15", poster: "/ancients/poster-fire.jpg?v=15" },
+  wheel: { src: "/ancients/scene-wheel.mp4?v=15", poster: "/ancients/poster-wheel.jpg?v=15" },
+  bridge: { src: "/ancients/scene-bridge.mp4?v=15", poster: "/ancients/poster-bridge.jpg?v=15" },
 } as const;
 
 type FilmId = keyof typeof FILMS;
@@ -142,7 +142,6 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
 
 export function CampApp() {
   const ask = useServerFn(askAncient);
-  const speak = useServerFn(speakAncient);
   const [characterId, setCharacterId] = useState<CharacterId | null>(null);
   const [filmReady, setFilmReady] = useState(false);
   const [threads, setThreads] = useState<Threads>(freshThreads);
@@ -243,7 +242,7 @@ export function CampApp() {
         think: result.think,
       };
       setThreads((prev) => ({ ...prev, [target]: [...history, reply].slice(-20) }));
-      if (characterRef.current === target) void playSpoken(target, reply.content);
+      if (characterRef.current === target && result.audio) playReady(result.mime, result.audio);
     } catch {
       if (chatGen.current[target] === gen && characterRef.current === target) {
         setError(`${getCharacter(target).name}聽不清楚，請再送出一次。`);
@@ -284,42 +283,33 @@ export function CampApp() {
     setThreads((prev) => ({ ...prev, [characterId]: [greeting(person)] }));
   }
 
-  async function playSpoken(target: CharacterId, text: string) {
-    if (characterRef.current !== target) return;
+  function playReady(mime: string, audioB64: string) {
+    if (!audioB64) return;
     const gen = ++speakGen.current;
-    audioRef.current?.pause();
+    const audio = audioRef.current ?? new Audio();
+    audioRef.current = audio;
+    audio.pause();
     setSpeakError(null);
-    try {
-      const result = await speak({ data: { characterId: target, text } });
-      if (gen !== speakGen.current || characterRef.current !== target) return;
-      if (!result.ok) {
-        setSpeakError(result.error);
-        return;
-      }
-      const audio = audioRef.current ?? new Audio();
-      audioRef.current = audio;
-      audio.pause();
-      audio.src = `data:${result.mime};base64,${result.audio}`;
-      await audio.play();
-    } catch {
+    audio.src = `data:${mime || "audio/mpeg"};base64,${audioB64}`;
+    void audio.play().catch(() => {
       if (gen === speakGen.current) setSpeakError("暫時未能朗讀");
-    }
+    });
   }
 
-  const spots: Record<CharacterId, { hit: CSSProperties; bubble: CSSProperties; doing: string }> = {
+  const spots: Record<CharacterId, { name: CSSProperties; bubble: CSSProperties; doing: string }> = {
     fire: {
-      hit: { left: "3%", top: "40%", width: "18%", height: "44%" },
+      name: { left: "13%", top: "45%" },
       bubble: { left: "24%", top: "48%", width: "min(22%, 200px)" },
       doing: "生火中",
     },
     wheel: {
-      hit: { left: "54%", top: "42%", width: "14%", height: "42%" },
-      bubble: { left: "32%", top: "22%", width: "min(22%, 200px)" },
+      name: { left: "34%", top: "25%" },
+      bubble: { left: "44%", top: "18%", width: "min(22%, 200px)" },
       doing: "推大石",
     },
     bridge: {
-      hit: { left: "76%", top: "36%", width: "16%", height: "42%" },
-      bubble: { left: "50%", top: "12%", width: "min(22%, 200px)" },
+      name: { left: "50%", top: "21%" },
+      bubble: { left: "60%", top: "14%", width: "min(22%, 200px)" },
       doing: "過橋中",
     },
   };
@@ -365,16 +355,10 @@ export function CampApp() {
                     onClick={() => select(id)}
                     aria-pressed={paused}
                     aria-label={paused ? `${item.name}望住你，打個招呼` : `按下${item.name}，叫${item.name}停低打招呼`}
-                    className="absolute z-[4] cursor-pointer rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet"
-                    style={spot.hit}
+                    className="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet"
+                    style={spot.name}
                   >
-                    {characterId ? null : (
-                      <span
-                        className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper"
-                      >
-                        {item.name} · {spot.doing}
-                      </span>
-                    )}
+                    {item.name} · {spot.doing}
                   </button>
                 );
               })}
@@ -488,13 +472,13 @@ export function CampApp() {
           </div>
         ) : null}
         <form
-          className="safe-bottom absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-ink/55 to-transparent px-3 pt-8 pb-3"
+          className="safe-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-ink/55 to-transparent px-3 pt-8 pb-3"
           onSubmit={(event) => {
             event.preventDefault();
             submit(draft);
           }}
         >
-          <div className="mx-auto flex max-w-3xl gap-2">
+          <div className="pointer-events-auto mx-auto flex max-w-3xl gap-2">
             <label htmlFor="ask" className="sr-only">
               {person ? `問${person.name}` : "先選擇一位古人"}
             </label>

@@ -61,59 +61,42 @@ function systemPrompt(id: CharacterId): string {
       `- ${item.problem} → 科技方法「${item.method}」。科學：${item.science}。${item.scienceKid} ${item.knew} 模仿大自然：${item.nature} 科學促進科技：${item.scienceToTech} 科技推動科學：${item.techToScience}`,
   ).join("\n");
 
-  return `你是香港小學科學課的古人夥伴，現在扮演「${person.name}」。用繁體中文，語氣親切，句子短，用詞淺白，像跟小四、小五學生聊天。用「甚麼」「為甚麼」「怎樣」。不要用大陸用語，也不要寫成全篇粵語（避免嘅、咗、喺）。
+  return `你是香港小學科學課的古人夥伴，現在扮演「${person.name}」。你是一個會聊天的人，不是只能背課文的機器。學生問甚麼，你都先答那一問。
+
+用繁體中文書面語，語氣親切，句子短，像跟小四、小五說話。用「甚麼」「為甚麼」「怎樣」。不要用大陸用語，也不要寫成全篇粵語（避免嘅、咗、喺、係）。學生常常用廣東話打字，例如「早晨」「食咗飯未」「食左」「點解」「係咪」。你要聽得懂，再用書面語答。
 
 ${person.persona}
 
-其他同伴：${others}。學生問到同伴時，先答你知道的一點，再請他去問那位同伴。
+其他同伴：${others}。問到同伴時，先答你知道的一點，再請他去問那位同伴。
 
-本課知識（問到科學、科技、發明時用，不要違背）：
-古人面對寒冷（以及煮食、照明）、搬運重物、無法過河。他們用生火、獨輪車和木橋來解決。
-他們多是觀察和模仿大自然，再嘗試、失敗、改進。當時未必知道正式的科學名稱。
+一定要答的日常話（不要岔開去講生火、推車、搭橋，除非他問的就是這些）：
+- 打招呼：你好、哈囉、嗨、早晨、早安、再見。你要回禮。例如他說「你好」，你就說「你好，我是${person.name}」；他說「早晨」，你就說「早晨」。可以再問他一句今天好嗎。
+- 吃過飯沒有、肚餓、早餐、午餐：答「我吃過了」，並說你吃的是河魚、小獸肉、野果或漿果。不要問「甚麼是飯」，也不要說還沒吃。
+- 你是誰、叫甚麼名字、幾歲、住哪裡、今天做甚麼、天氣、心情、怕不怕、家人、朋友：用第一人稱認真答。
+- 食、衣、住、玩、上學、身體、感受、故事，都要答。不可以說「我只懂生火、搬運、過河」，也不可以叫他再問一次才肯答。
+
+你活在古代，不認識學生時代的新東西。聽到打機、遊戲機、手機、電腦、電視、汽車、飛機、電車、漢堡包、雪糕、汽水、麵包、糖果這類詞，不要假裝知道。第一句問「甚麼是……？」，再用同一類的一件營地生活對照，然後請學生講給你聽。食物就對烤魚或野果，玩耍就對草球或跳石，不要把兩類混在一起。
+
+本課知識只在問到科學、科技、發明、生火、車、橋時才用，不要每句都背：
+古人面對寒冷、煮食、照明、搬運重物、無法過河。他們用生火、獨輪車和木橋來解決。多是觀察和模仿大自然，再嘗試、失敗、改進。當時未必知道正式的科學名稱。
 ${facts}
-科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。科學發現能促進科技發展，科技發展亦能推動科學進步。不要每句都背這句。例子優先用上面三項。
-
-你活在古代，不認識學生時代的東西。聽到打機、遊戲機、手機、電腦、電視、汽車、飛機、電車、漢堡包、雪糕、汽水、麵包、糖果這類現代詞，不要假裝知道，也不要說「很好玩吧」。第一句就問「甚麼是……？」，再用同一類的一件營地生活對照，最後請學生解釋給你聽。
-
-對照必須貼題，不可以岔開去講不相干的事。先判斷學生這一問屬於哪一類，只從那一類挑一件，寫成新句子：
-- 食物、食、餓、味道：河魚、小獸、野果、漿果、堅果、植物的根，用火烤熟；傍晚把烤魚分給最小的孩子。不要改講玩耍。
-- 玩耍、遊戲、無聊：編草球踢、淺水邊跳石、追著玩、學鳥叫引雀。不要改講食物。
-- 出門、交通、車、遠：走路、獨輪車推重物、木橋過河。
-- 衣服、冷、熱：獸皮，或用植物編成的衣服。
-- 屋、睡覺、下雨：睡在山洞口；下雨擠在洞口。
-- 飲水、渴：河邊取水，阿火把水燒開再喝。
-同一類裡如果上一句用過，這次換同一類的另一件。
-
-反例：學生說「我平時食漢堡包」，不可以回答「孩子學鳥叫，看誰先把河邊的雀引過來」。那和食物無關。應先問「甚麼是漢堡包？」，再說自己吃烤魚或野果，然後請學生講漢堡包是甚麼。
-
-嚴禁重複。不要再寫這句或近似句：「我活在河邊營地，沒有電，天黑只靠火堆照明取暖。小孩子在草地上追著玩、幫忙撿柴，從不靠近火心。」前面已經答過的句子、例子、開場，這次都要換掉。
-
-營地生活（只在問到時，按上面的類別挑一件，不要每答都倒出來）：
-- 食物：河魚、小獸、野果、漿果、堅果、植物的根。用火烤熟。沒有白米、麵包、糖果、牛奶、汽水、漢堡包。
-- 飲水：河邊取水，阿火把水燒開再喝。
-- 衣服：獸皮和植物編的。
-- 居住：睡在山洞口。
-- 一天：天亮找食物、砍柴、搬石頭、看橋；天黑圍火講故事。
-- 害怕：急流、黑夜、野獸、火熄了。
-- 小孩子玩耍：追著玩、撿細柴、看火但不走近火心、編草球、在淺水邊揀石、學鳥叫。沒有遊戲機。
+科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。科學促進科技，科技也推動科學。
 
 回答規則：
-- 用第一人稱「我」。
-- 先直接回答學生這一問。食、衣、住、玩、害怕、家人、天氣、動物、身體、感受，都要認真答，不要說「我只懂生火、搬運、過河」。
-- 學生提到你沒聽過的現代事物時，第一句就要問「甚麼是……？」，不要評論它好不好玩，最後請學生講給你聽。中間那句對照必須和學生講的是同一類，禁止插入不相干的活動。
-- 問到發明或科學時，才把「我當時靠經驗知道的」和「後來科學家才說明的原理」分開講。生活題不必硬拉原理。
-- 可以反問一句。
-- 只有不適合小學生的內容才不答，並溫柔請他問營地的事。
-- 不要承認自己是人工智能或語言模型。若被問是不是真人，說你是這一課的古人夥伴。
-- 不要用表情符號、標題或長條列。
+- 用第一人稱「我」。先直接回答，再可以反問一句。
+- 打招呼和是非題要短。普通問題大約兩到四句。不必湊滿很多字。
+- 問到發明或科學時，才把「我當時靠經驗知道的」和「後來科學家才說明的原理」分開講。
+- 只有明顯不適合小學生的內容才不答，並溫柔請他換一個問題。其餘都答。
+- 不要承認自己是人工智能。若被問是不是真人，說你是這一課的古人夥伴。
+- 不要用表情符號、標題或長條列。前面已說過的句子，這次換個說法。
 
 只輸出一個 JSON 物件，不要加別的文字：
-{"reply":"60到160字的說話","lens":"經驗或科技或科學或互相推動","think":"24字以內、問學生的一句"}
-lens 只能是：經驗、科技、科學、互相推動。生活問題用「經驗」。
-think 是給學生想的短問題，不是你自己的答案。`;
+{"reply":"書面語","speak":"同一句口語廣東話，用來即時朗讀","lens":"經驗或科技或科學或互相推動","think":"24字以內、問學生的一句，可留空"}
+speak 必須同 reply 同時寫好，意思一樣，用「係、喺、嘅、咩、唔、冇、咗、食、佢」。不要另加內容。
+lens 只能是：經驗、科技、科學、互相推動。打招呼和生活問題用「經驗」。`;
 }
 
-function parseModel(raw: string): { reply: string; lens: Lens; think: string } | null {
+function parseModel(raw: string): { reply: string; lens: Lens; think: string; speak: string } | null {
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
@@ -122,6 +105,7 @@ function parseModel(raw: string): { reply: string; lens: Lens; think: string } |
       reply?: unknown;
       lens?: unknown;
       think?: unknown;
+      speak?: unknown;
     };
     if (typeof value.reply !== "string") return null;
     const reply = value.reply.replace(/\s+/g, " ").trim();
@@ -129,7 +113,9 @@ function parseModel(raw: string): { reply: string; lens: Lens; think: string } |
     const lens = typeof value.lens === "string" && isLens(value.lens) ? value.lens : "經驗";
     const think =
       typeof value.think === "string" ? value.think.replace(/\s+/g, " ").trim().slice(0, 40) : "";
-    return { reply: reply.slice(0, 500), lens, think };
+    const speak =
+      typeof value.speak === "string" ? value.speak.replace(/\s+/g, " ").trim().slice(0, 400) : "";
+    return { reply: reply.slice(0, 500), lens, think, speak: speak || toSpoken(reply) };
   } catch {
     return null;
   }
@@ -162,52 +148,78 @@ async function callGrok(
   });
 }
 
-function plainReply(raw: string): { reply: string; lens: Lens; think: string } | null {
+function plainReply(raw: string): { reply: string; lens: Lens; think: string; speak: string } | null {
   const text = raw
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (text.length < 8 || text.startsWith("{") || text.startsWith("[")) return null;
-  return { reply: text.slice(0, 220), lens: "經驗", think: "" };
+  const reply = text.slice(0, 220);
+  return { reply, lens: "經驗", think: "", speak: toSpoken(reply) };
 }
 
-function fallbackReply(id: CharacterId, question: string): { reply: string; lens: Lens; think: string } {
-  const food = /食|餓|飯|漢堡|肉|菜|野果|水果|甜|味|糕|糖/.test(question);
-  const play = /玩|遊戲|打機|無聊/.test(question);
-  const wear = /衣|穿|冷|熱|鞋/.test(question);
-  const home = /屋|睡|雨|住|洞/.test(question);
-  const water = /喝水|飲水|渴|河水/.test(question);
-  const travel = /汽車|飛機|船|行路|出門|坐車/.test(question);
-  let reply = "";
-  if (food) {
-    reply = "甚麼是你說的那種食物？我沒吃過。我肚子餓就烤河魚，也採野果和堅果，傍晚把烤魚分給最小的孩子。你可以講給我聽嗎？";
-  } else if (play) {
-    reply = "甚麼是你說的那種玩法？我們的孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。你可以講給我聽嗎？";
-  } else if (wear) {
-    reply = "我們穿獸皮，也用植物編成衣服。天冷就靠近火堆。你說的衣服是怎樣的？";
-  } else if (home) {
-    reply = "我們睡在山洞口。下雨就擠在洞口，看着火慢慢燒。你住的地方是怎樣的？";
-  } else if (water) {
-    reply =
-      id === "fire"
-        ? "我們在河邊取水，我把水燒開再喝。你說的是甚麼水？"
-        : "我們在河邊取水，阿火把水燒開再喝。你說的是甚麼水？";
-  } else if (travel) {
-    reply = "我們靠雙腳走路。重的東西用獨輪車推，過河就走木橋。你說的是怎樣走？";
-  } else if (id === "fire") {
-    reply = "我在山洞口鑽木取火，用來取暖、烤魚和照明。你想問生火，還是告訴我你那邊的生活？";
-  } else if (id === "wheel") {
-    reply = "大石抱不動，我就做了一輛獨輪車，輪子一轉就輕了。你想問搬東西，還是告訴我你那邊的生活？";
-  } else {
-    reply = "河水擋着去路，我用樹幹搭了木橋，人可以走過去。你想問過河，還是告訴我你那邊的生活？";
+function toSpoken(text: string): string {
+  const pairs: [string, string][] = [
+    ["甚麼", "咩"],
+    ["什麼", "咩"],
+    ["沒有", "冇"],
+    ["不是", "唔係"],
+    ["不會", "唔會"],
+    ["不要", "唔好"],
+    ["吃過了", "食咗啦"],
+    ["吃過", "食咗"],
+    ["吃了", "食咗"],
+    ["吃", "食"],
+    ["我們", "我哋"],
+    ["他們", "佢哋"],
+    ["我是", "我係"],
+    ["今天", "今日"],
+    ["你今天好嗎", "你今日好嗎"],
+    ["很高興", "好開心"],
+    ["嗎", "呀"],
+    ["的", "嘅"],
+    ["在", "喺"],
+    ["和", "同"],
+    ["給", "畀"],
+    ["看", "睇"],
+    ["說", "講"],
+    ["還", "仲"],
+    ["了", "咗"],
+    ["不", "唔"],
+  ];
+  let spoken = text;
+  for (const [from, to] of pairs) spoken = spoken.replaceAll(from, to);
+  return spoken;
+}
+
+function fallbackReply(id: CharacterId, question: string): { reply: string; lens: Lens; think: string; speak: string } {
+  const name = getCharacter(id).name;
+  const text = question.replace(/\s+/g, "");
+  const hello = /^(你好|您好|哈囉|嗨|hi|hello|早晨|早安|早上好|午安|再見|拜拜)/i.test(text);
+  const eaten = /食咗|食左|食過|吃了|吃過|吃飯|食飯|食未|飯未/.test(text);
+  const who = /你是誰|你係邊|叫甚麼|叫咩|幾歲|名字/.test(text);
+  const say = (reply: string, think = "") => ({ reply, lens: "經驗" as const, think, speak: toSpoken(reply) });
+  if (hello) {
+    const line = /早晨|早安/.test(text) ? `早晨。我是${name}，今天也在營地做事。你吃過東西了嗎？` : `你好，我是${name}。很高興你來找我說話。你今天好嗎？`;
+    return say(line);
   }
-  return { reply, lens: "經驗", think: "你那邊是怎樣的？" };
+  if (eaten) {
+    return say("我吃過了。天亮後烤了一條河魚，還吃了幾顆野果。你吃過了嗎？", "你吃的是甚麼？");
+  }
+  if (who) return say(`我是${name}，住在河邊的營地。你想問我今天做的事，還是想先跟我打招呼？`);
+  if (/漢堡|雪糕|汽水|糖果|麵包|蛋糕/.test(question)) {
+    return say("甚麼是你說的那種食物？我沒吃過。我肚子餓就烤河魚，也採野果和堅果。你可以講給我聽嗎？", "它是甚麼味道？");
+  }
+  if (/打機|遊戲機|遊戲/.test(question)) {
+    return say("甚麼是你說的那種玩法？我們的孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。你可以講給我聽嗎？", "你們怎麼玩？");
+  }
+  return say(`${name}聽見了。你可以再說清楚一點嗎？我想認真回答你。`);
 }
 
 async function completeAsk(
   apiKey: string,
   messages: { role: string; content: string }[],
-): Promise<{ reply: string; lens: Lens; think: string } | null> {
+): Promise<{ reply: string; lens: Lens; think: string; speak: string } | null> {
   const response = await callGrok(apiKey, messages, true);
   if (response.status === 400) {
     const plain = await callGrok(apiKey, messages, false, 0.5, 400, 5000);
@@ -228,7 +240,7 @@ export const askAncient = createServerFn({ method: "POST" })
     const apiKey = process.env.XAI_API_KEY;
     if (!apiKey) {
       const backup = fallbackReply(data.characterId, data.messages[data.messages.length - 1]?.content ?? "");
-      return { ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think };
+      return { ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think, audio: "", mime: "audio/mpeg" };
     }
     if (!allowRequest(clientIp())) return { ok: false as const, error: "問得太密了，休息幾秒再問。" };
 
@@ -240,21 +252,70 @@ export const askAncient = createServerFn({ method: "POST" })
     const started = Date.now();
     try {
       const first = await completeAsk(apiKey, messages);
-      if (first) return { ok: true as const, reply: first.reply, lens: first.lens, think: first.think };
+      if (first) return await withVoice(apiKey, data.characterId, first);
     } catch {
       /* try once more only if the first attempt failed quickly */
     }
     if (Date.now() - started < 4000) {
       try {
         const second = await completeAsk(apiKey, messages);
-        if (second) return { ok: true as const, reply: second.reply, lens: second.lens, think: second.think };
+        if (second) return await withVoice(apiKey, data.characterId, second);
       } catch {
         /* use the camp fallback below */
       }
     }
     const backup = fallbackReply(data.characterId, question);
-    return { ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think };
+    return await withVoice(apiKey, data.characterId, backup);
   });
+
+async function synthesize(
+  apiKey: string,
+  voiceId: string,
+  text: string,
+): Promise<{ audio: string; mime: string } | null> {
+  const spoken = text.replace(/\s+/g, " ").trim().slice(0, 320);
+  if (!spoken) return null;
+  const response = await fetch("https://api.x.ai/v1/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      text: spoken,
+      voice_id: voiceId,
+      language: "yue",
+    }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) return null;
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength < 80 || bytes.byteLength > 1_500_000) return null;
+  const mime = response.headers.get("content-type") || "audio/mpeg";
+  return { audio: bytes.toString("base64"), mime: mime.startsWith("audio/") ? mime : "audio/mpeg" };
+}
+
+async function withVoice(
+  apiKey: string,
+  id: CharacterId,
+  answer: { reply: string; lens: Lens; think: string; speak: string },
+) {
+  const person = getCharacter(id);
+  let clip: { audio: string; mime: string } | null = null;
+  try {
+    clip = await synthesize(apiKey, person.voiceId, answer.speak || toSpoken(answer.reply));
+  } catch {
+    clip = null;
+  }
+  return {
+    ok: true as const,
+    reply: answer.reply,
+    lens: answer.lens,
+    think: answer.think,
+    audio: clip?.audio ?? "",
+    mime: clip?.mime ?? "audio/mpeg",
+  };
+}
 
 function readSpeech(input: unknown): { characterId: CharacterId; text: string } {
   if (!input || typeof input !== "object") throw new Error("未能朗讀");
@@ -268,39 +329,6 @@ function readSpeech(input: unknown): { characterId: CharacterId; text: string } 
   return { characterId: data.characterId, text };
 }
 
-function cleanSpoken(raw: string): string {
-  const text = raw
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/^["「]|["」]$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.slice(0, 400);
-}
-
-async function spokenCantonese(apiKey: string, name: string, text: string): Promise<string> {
-  try {
-    const response = await callGrok(
-      apiKey,
-      [
-        {
-          role: "system",
-          content: `你把書面中文改成香港小學生聽得明的口語廣東話，只供朗讀。保持原意，不要加新資料，不要用英文。用「係、喺、嘅、咩、唔、冇、咗、睇、食、佢、畀、啲、咁、點解、噉」。說話人是「${name}」，保持第一人稱。只輸出要讀出的句子。`,
-        },
-        { role: "user", content: text },
-      ],
-      false,
-      0.3,
-    );
-    if (!response.ok) return text;
-    const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const spoken = cleanSpoken(payload.choices?.[0]?.message?.content ?? "");
-    if (spoken.length < 4) return text;
-    return spoken;
-  } catch {
-    return text;
-  }
-}
-
 export const speakAncient = createServerFn({ method: "POST" })
   .validator(readSpeech)
   .handler(async ({ data }) => {
@@ -309,35 +337,10 @@ export const speakAncient = createServerFn({ method: "POST" })
     if (!allowRequest(clientIp())) return { ok: false as const, error: "請等一等再聽" };
 
     const person = getCharacter(data.characterId);
-    const spoken = await spokenCantonese(apiKey, person.name, data.text);
     try {
-      const response = await fetch("https://api.x.ai/v1/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          text: spoken,
-          voice_id: person.voiceId,
-          language: "yue",
-        }),
-        signal: AbortSignal.timeout(28_000),
-      });
-      if (!response.ok) {
-        console.error("xai tts failed", response.status);
-        return { ok: false as const, error: "暫時未能朗讀" };
-      }
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.byteLength < 80 || bytes.byteLength > 1_500_000) {
-        return { ok: false as const, error: "暫時未能朗讀" };
-      }
-      const mime = response.headers.get("content-type") || "audio/mpeg";
-      return {
-        ok: true as const,
-        audio: bytes.toString("base64"),
-        mime: mime.startsWith("audio/") ? mime : "audio/mpeg",
-      };
+      const clip = await synthesize(apiKey, person.voiceId, toSpoken(data.text));
+      if (!clip) return { ok: false as const, error: "暫時未能朗讀" };
+      return { ok: true as const, audio: clip.audio, mime: clip.mime };
     } catch {
       return { ok: false as const, error: "暫時未能朗讀" };
     }

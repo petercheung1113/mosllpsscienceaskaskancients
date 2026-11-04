@@ -3,7 +3,7 @@ import { U as isRedirect, b as require_jsx_runtime, q as require_react, y as use
 import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } from "./ssr.mjs";
 import { a as isLens, i as isCharacterId, n as LENS_GLOSS, r as getCharacter, t as CHARACTERS } from "./lesson-DvXosKj2.mjs";
 import { i as BookOpen, n as Send, r as RotateCcw } from "../_libs/lucide-react.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-CT_9gFi1.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-D2Ela3A8.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function useServerFn(serverFn) {
@@ -70,7 +70,7 @@ function readSpeech(input) {
 		text
 	};
 }
-var speakAncient = createServerFn({ method: "POST" }).validator(readSpeech).handler(createSsrRpc("368fea765894ae01c83fc33b26a7cb9b62d940a221cabb32e82004634bfb3c04"));
+createServerFn({ method: "POST" }).validator(readSpeech).handler(createSsrRpc("368fea765894ae01c83fc33b26a7cb9b62d940a221cabb32e82004634bfb3c04"));
 var STORAGE_KEY = "ancient-camp-v1";
 var SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 function greeting(person) {
@@ -95,20 +95,20 @@ function lensClass(lens) {
 }
 var FILMS = {
 	idle: {
-		src: "/ancients/scene-idle.mp4?v=13",
-		poster: "/ancients/poster-idle.jpg?v=13"
+		src: "/ancients/scene-idle.mp4?v=15",
+		poster: "/ancients/poster-idle.jpg?v=15"
 	},
 	fire: {
-		src: "/ancients/scene-fire.mp4?v=13",
-		poster: "/ancients/poster-fire.jpg?v=13"
+		src: "/ancients/scene-fire.mp4?v=15",
+		poster: "/ancients/poster-fire.jpg?v=15"
 	},
 	wheel: {
-		src: "/ancients/scene-wheel.mp4?v=13",
-		poster: "/ancients/poster-wheel.jpg?v=13"
+		src: "/ancients/scene-wheel.mp4?v=15",
+		poster: "/ancients/poster-wheel.jpg?v=15"
 	},
 	bridge: {
-		src: "/ancients/scene-bridge.mp4?v=13",
-		poster: "/ancients/poster-bridge.jpg?v=13"
+		src: "/ancients/scene-bridge.mp4?v=15",
+		poster: "/ancients/poster-bridge.jpg?v=15"
 	}
 };
 function CampFilm({ active, onReady }) {
@@ -178,7 +178,6 @@ function CampFilm({ active, onReady }) {
 }
 function CampApp() {
 	const ask = useServerFn(askAncient);
-	const speak = useServerFn(speakAncient);
 	const [characterId, setCharacterId] = (0, import_react.useState)(null);
 	const [filmReady, setFilmReady] = (0, import_react.useState)(false);
 	const [threads, setThreads] = (0, import_react.useState)(freshThreads);
@@ -284,7 +283,7 @@ function CampApp() {
 				...prev,
 				[target]: [...history, reply].slice(-20)
 			}));
-			if (characterRef.current === target) playSpoken(target, reply.content);
+			if (characterRef.current === target && result.audio) playReady(result.mime, result.audio);
 		} catch {
 			if (chatGen.current[target] === gen && characterRef.current === target) setError(`${getCharacter(target).name}聽不清楚，請再送出一次。`);
 		} finally {
@@ -329,37 +328,23 @@ function CampApp() {
 			[characterId]: [greeting(person)]
 		}));
 	}
-	async function playSpoken(target, text) {
-		if (characterRef.current !== target) return;
+	function playReady(mime, audioB64) {
+		if (!audioB64) return;
 		const gen = ++speakGen.current;
-		audioRef.current?.pause();
+		const audio = audioRef.current ?? new Audio();
+		audioRef.current = audio;
+		audio.pause();
 		setSpeakError(null);
-		try {
-			const result = await speak({ data: {
-				characterId: target,
-				text
-			} });
-			if (gen !== speakGen.current || characterRef.current !== target) return;
-			if (!result.ok) {
-				setSpeakError(result.error);
-				return;
-			}
-			const audio = audioRef.current ?? new Audio();
-			audioRef.current = audio;
-			audio.pause();
-			audio.src = `data:${result.mime};base64,${result.audio}`;
-			await audio.play();
-		} catch {
+		audio.src = `data:${mime || "audio/mpeg"};base64,${audioB64}`;
+		audio.play().catch(() => {
 			if (gen === speakGen.current) setSpeakError("暫時未能朗讀");
-		}
+		});
 	}
 	const spots = {
 		fire: {
-			hit: {
-				left: "3%",
-				top: "40%",
-				width: "18%",
-				height: "44%"
+			name: {
+				left: "13%",
+				top: "45%"
 			},
 			bubble: {
 				left: "24%",
@@ -369,29 +354,25 @@ function CampApp() {
 			doing: "生火中"
 		},
 		wheel: {
-			hit: {
-				left: "54%",
-				top: "42%",
-				width: "14%",
-				height: "42%"
+			name: {
+				left: "34%",
+				top: "25%"
 			},
 			bubble: {
-				left: "32%",
-				top: "22%",
+				left: "44%",
+				top: "18%",
 				width: "min(22%, 200px)"
 			},
 			doing: "推大石"
 		},
 		bridge: {
-			hit: {
-				left: "76%",
-				top: "36%",
-				width: "16%",
-				height: "42%"
+			name: {
+				left: "50%",
+				top: "21%"
 			},
 			bubble: {
-				left: "50%",
-				top: "12%",
+				left: "60%",
+				top: "14%",
 				width: "min(22%, 200px)"
 			},
 			doing: "過橋中"
@@ -451,21 +432,18 @@ function CampApp() {
 									const item = getCharacter(id);
 									const spot = spots[id];
 									const paused = characterId === id;
-									return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 										type: "button",
 										onClick: () => select(id),
 										"aria-pressed": paused,
 										"aria-label": paused ? `${item.name}望住你，打個招呼` : `按下${item.name}，叫${item.name}停低打招呼`,
-										className: "absolute z-[4] cursor-pointer rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet",
-										style: spot.hit,
-										children: characterId ? null : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-											className: "absolute bottom-full left-1/2 mb-1 -translate-x-1/2 rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper",
-											children: [
-												item.name,
-												" · ",
-												spot.doing
-											]
-										})
+										className: "absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet",
+										style: spot.name,
+										children: [
+											item.name,
+											" · ",
+											spot.doing
+										]
 									}, id);
 								}),
 								person && showBubble ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -616,13 +594,13 @@ function CampApp() {
 						})
 					}) : null,
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", {
-						className: "safe-bottom absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-ink/55 to-transparent px-3 pt-8 pb-3",
+						className: "safe-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-ink/55 to-transparent px-3 pt-8 pb-3",
 						onSubmit: (event) => {
 							event.preventDefault();
 							submit(draft);
 						},
 						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-							className: "mx-auto flex max-w-3xl gap-2",
+							className: "pointer-events-auto mx-auto flex max-w-3xl gap-2",
 							children: [
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
 									htmlFor: "ask",
