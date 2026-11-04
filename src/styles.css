@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans TC", "PingFang HK", "Microsoft JhengHei", sans-serif;
+  --font-display: "Ma Shan Zheng", "Noto Sans TC", cursive;
+
+  --color-paper: #f4efe4;
+  --color-paper-2: #e7dcc8;
+  --color-sheet: #fffaf2;
+  --color-ink: #2c261c;
+  --color-muted: #6f6558;
+  --color-line: #e0d3bf;
+  --color-meadow: #2f6b45;
+  --color-meadow-deep: #234f34;
+  --color-ember: #9a3e1e;
+  --color-ember-deep: #7c3016;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.msg-in {
+  animation: rise 180ms ease-out;
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.scene-slot {
+  container-type: size;
+  overflow: hidden;
+}
+
+.stage {
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+
+.say {
+  position: absolute;
+  z-index: 20;
+  width: min(30%, 220px);
+}
+
+.worker video {
+  filter: drop-shadow(0 6px 4px rgb(44 38 28 / 0.28));
+}
+
+.sprite-rub {
+  animation: work-rub 1.05s ease-in-out infinite;
+  transform-origin: 50% 88%;
+}
+
+.sprite-push {
+  animation: work-push 1.35s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.sprite-step {
+  animation: work-step 1.25s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.worker.is-paused .sprite-rub,
+.worker.is-paused .sprite-push,
+.worker.is-paused .sprite-step {
+  animation-play-state: paused;
+}
+
+@keyframes work-rub {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(2%) rotate(2.5deg);
+  }
+}
+
+@keyframes work-push {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(7%);
+  }
+}
+
+@keyframes work-step {
+  0%,
+  100% {
+    transform: translateX(-5%) translateY(0);
+  }
+  50% {
+    transform: translateX(6%) translateY(-3%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-in,
+  .sprite-rub,
+  .sprite-push,
+  .sprite-step {
+    animation: none;
+  }
+}

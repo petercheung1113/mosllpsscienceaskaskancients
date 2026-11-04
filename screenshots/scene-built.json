@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "古人問一問",
+      "hasCanvas": false,
+      "bodyTextLen": 109,
+      "bodyTextHash": "f95ed791e7ee64be25e19110e779a593314f4987f38f7b1dde8431ddd8ae0fd5",
+      "bodyTextPrefix": "按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。 小學常識 · 科學與科技 古人問",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/scene-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "古人問一問",
+      "hasCanvas": false,
+      "bodyTextLen": 109,
+      "bodyTextHash": "f95ed791e7ee64be25e19110e779a593314f4987f38f7b1dde8431ddd8ae0fd5",
+      "bodyTextPrefix": "按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。 小學常識 · 科學與科技 古人問",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/scene-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/scene-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

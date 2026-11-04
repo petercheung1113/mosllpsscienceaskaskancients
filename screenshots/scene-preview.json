@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "古人問一問",
+      "hasCanvas": false,
+      "bodyTextLen": 109,
+      "bodyTextHash": "f95ed791e7ee64be25e19110e779a593314f4987f38f7b1dde8431ddd8ae0fd5",
+      "bodyTextPrefix": "按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。 小學常識 · 科學與科技 古人問",
+      "horizontalOverflow": false,
+      "consoleErrors": [
+        "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <AuthProvider>\n      <OutletImpl>\n        <Suspense fallback={null}>\n          <MatchImpl routeId=\"/\">\n            <MatchView router={{...}} match={{id:\"//\",ssr:true, ...}}>\n              <CatchBoundary getResetKey={function getResetKey} errorComponent={function AppErrorComponent} ...>\n                <MatchInnerImpl match={{id:\"//\",ssr:true, ...}}>\n                  <Lazy>\n                    <CampApp>\n                      <main className=\"relative h...\">\n                        <p>\n                        <div className=\"scene-slot...\">\n                          <img>\n                          <div>\n                          <form className=\"safe-botto...\" onSubmit={function onSubmit}>\n                            <div className=\"mx-auto fl...\">\n                              <label>\n                              <input\n                                id=\"ask\"\n                                ref={{current:null}}\n                                value=\"\"\n                                maxLength={160}\n                                enterKeyHint=\"send\"\n                                autoComplete=\"off\"\n                                disabled={true}\n                                placeholder=\"先按下一位正在工作的古人\"\n                                onChange={function onChange}\n                                className=\"h-12 min-w-0 flex-1 rounded-full border border-line bg-sheet px-4 text-base...\"\n-                               style={{caret-color:\"transparent\"}}\n                              >\n                              ...\n"
+      ],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/scene-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "古人問一問",
+      "hasCanvas": false,
+      "bodyTextLen": 109,
+      "bodyTextHash": "f95ed791e7ee64be25e19110e779a593314f4987f38f7b1dde8431ddd8ae0fd5",
+      "bodyTextPrefix": "按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。 小學常識 · 科學與科技 古人問",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/scene-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/scene-preview.json"
+}
