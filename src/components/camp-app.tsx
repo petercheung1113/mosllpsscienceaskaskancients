@@ -308,8 +308,8 @@ export function CampApp() {
       doing: "推大石",
     },
     bridge: {
-      name: { left: "50%", top: "21%" },
-      bubble: { left: "60%", top: "14%", width: "min(22%, 200px)" },
+      name: { left: "78%", top: "6%" },
+      bubble: { left: "86%", top: "14%", width: "min(13%, 168px)" },
       doing: "過橋中",
     },
   };
@@ -319,7 +319,7 @@ export function CampApp() {
   const lessonPerson = person ?? getCharacter("fire");
   const film: FilmId =
     characterId === "fire" || characterId === "wheel" || characterId === "bridge" ? characterId : "idle";
-  const tailOnLeft = person?.id === "fire";
+  const tailOnLeft = person?.id === "fire" || person?.id === "bridge";
 
   return (
     <main className="relative h-dvh overflow-hidden bg-ink text-ink">
@@ -370,7 +370,7 @@ export function CampApp() {
                     tailOnLeft ? "-left-1.5 top-8 border-t-0 border-r-0" : "-right-1.5 top-8 border-b-0 border-l-0"
                   }`}
                 />
-                <div className="max-h-36 overflow-auto rounded-2xl border border-line bg-sheet/95 px-3 py-2 shadow-lg">
+                <div className="max-h-44 overflow-auto rounded-2xl border border-line bg-sheet/95 px-3 py-2 shadow-lg">
                   <p className="text-sm font-medium text-meadow">{person.name}</p>
                   {waiting ? (
                     <p className="mt-1 text-pretty">{person.name}正在回想……</p>
