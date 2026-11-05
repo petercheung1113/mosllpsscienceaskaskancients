@@ -3,7 +3,7 @@ import { U as isRedirect, b as require_jsx_runtime, q as require_react, y as use
 import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } from "./ssr.mjs";
 import { a as isLens, i as isCharacterId, n as LENS_GLOSS, r as getCharacter, t as CHARACTERS } from "./lesson-DvXosKj2.mjs";
 import { i as BookOpen, n as Send, r as RotateCcw } from "../_libs/lucide-react.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-4Z4V6Wpw.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-EZNST_dk.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function useServerFn(serverFn) {
@@ -359,9 +359,9 @@ function CampApp() {
 				top: "25%"
 			},
 			bubble: {
-				left: "44%",
-				top: "18%",
-				width: "min(22%, 200px)"
+				left: "50%",
+				top: "8%",
+				width: "min(20%, 188px)"
 			},
 			doing: "推大石"
 		},
@@ -371,9 +371,9 @@ function CampApp() {
 				top: "6%"
 			},
 			bubble: {
-				left: "86%",
+				left: "80%",
 				top: "14%",
-				width: "min(13%, 168px)"
+				width: "min(16%, 176px)"
 			},
 			doing: "過橋中"
 		}
@@ -383,7 +383,7 @@ function CampApp() {
 	const showBubble = Boolean(person);
 	const lessonPerson = person ?? getCharacter("fire");
 	const film = characterId === "fire" || characterId === "wheel" || characterId === "bridge" ? characterId : "idle";
-	const tailOnLeft = person?.id === "fire" || person?.id === "bridge";
+	const tailOnLeft = person?.id === "fire" || person?.id === "wheel" || person?.id === "bridge";
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", {
 		className: "relative h-dvh overflow-hidden bg-ink text-ink",
 		children: [

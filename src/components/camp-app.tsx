@@ -304,12 +304,12 @@ export function CampApp() {
     },
     wheel: {
       name: { left: "34%", top: "25%" },
-      bubble: { left: "44%", top: "18%", width: "min(22%, 200px)" },
+      bubble: { left: "50%", top: "8%", width: "min(20%, 188px)" },
       doing: "推大石",
     },
     bridge: {
       name: { left: "78%", top: "6%" },
-      bubble: { left: "86%", top: "14%", width: "min(13%, 168px)" },
+      bubble: { left: "80%", top: "14%", width: "min(16%, 176px)" },
       doing: "過橋中",
     },
   };
@@ -319,7 +319,7 @@ export function CampApp() {
   const lessonPerson = person ?? getCharacter("fire");
   const film: FilmId =
     characterId === "fire" || characterId === "wheel" || characterId === "bridge" ? characterId : "idle";
-  const tailOnLeft = person?.id === "fire" || person?.id === "bridge";
+  const tailOnLeft = person?.id === "fire" || person?.id === "wheel" || person?.id === "bridge";
 
   return (
     <main className="relative h-dvh overflow-hidden bg-ink text-ink">
