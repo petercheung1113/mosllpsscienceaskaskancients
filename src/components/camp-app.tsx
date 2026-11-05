@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, RotateCcw, Send } from "lucide-react";
 import { askAncient } from "@/lib/ask.functions";
+import { joinClass } from "@/lib/roster.functions";
 import {
   CHARACTERS,
   LENS_GLOSS,
@@ -142,6 +144,8 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
 
 export function CampApp() {
   const ask = useServerFn(askAncient);
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [banned, setBanned] = useState(false);
   const [characterId, setCharacterId] = useState<CharacterId | null>(null);
   const [filmReady, setFilmReady] = useState(false);
   const [threads, setThreads] = useState<Threads>(freshThreads);
@@ -220,12 +224,14 @@ export function CampApp() {
   }
 
   async function run(target: CharacterId, history: Msg[], gen: number) {
+    if (!studentId) return;
     setPendingId(target);
     setError(null);
     try {
       const result = await ask({
         data: {
           characterId: target,
+          studentId,
           messages: history.slice(-6).map(({ role, content }) => ({ role, content })),
         },
       });
@@ -234,6 +240,7 @@ export function CampApp() {
         if (characterRef.current === target) setError(result.error);
         return;
       }
+      if (result.locked) setBanned(true);
       const reply: Msg = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -254,7 +261,7 @@ export function CampApp() {
 
   function submit(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || pendingId || !characterId) return;
+    if (!trimmed || pendingId || !characterId || banned) return;
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: trimmed };
     const history = [...threads[characterId], userMsg].slice(-20);
     const gen = ++chatGen.current[characterId];
@@ -511,6 +518,118 @@ export function CampApp() {
           <p className="font-display text-4xl">加載中</p>
         </div>
       )}
+      {banned ? <BannedNotice /> : studentId ? null : <StudentGate onReady={setStudentId} onBanned={() => setBanned(true)} />}
     </main>
+  );
+}
+
+function StudentGate({ onReady, onBanned }: { onReady: (id: string) => void; onBanned: () => void }) {
+  const join = useServerFn(joinClass);
+  const [name, setName] = useState("");
+  const [className, setClassName] = useState("");
+  const [studentNo, setStudentNo] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await join({ data: { name, className, studentNo } });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (result.locked) onBanned();
+      else onReady(result.studentId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "請再試一次");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 z-50 grid place-items-center bg-ink/55 p-4">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-md rounded-3xl border border-line bg-sheet p-6 shadow-lg"
+      >
+        <p className="text-sm font-medium text-meadow">小學科學 · 科學與科技</p>
+        <h1 className="font-display text-5xl leading-none text-ink">先寫低你的資料</h1>
+        <p className="mt-2 text-pretty text-muted">寫好姓名、班別同學號，就可以同古人傾偈。</p>
+        <label className="mt-4 block text-sm font-medium" htmlFor="student-name">
+          姓名
+          <input
+            id="student-name"
+            required
+            autoComplete="name"
+            maxLength={20}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="例如：陳小明"
+            className="mt-1 h-12 w-full rounded-2xl border border-line bg-paper px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-meadow"
+          />
+        </label>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="block text-sm font-medium" htmlFor="student-class">
+            班別
+            <input
+              id="student-class"
+              required
+              maxLength={12}
+              value={className}
+              onChange={(event) => setClassName(event.target.value)}
+              placeholder="例如：5A"
+              className="mt-1 h-12 w-full rounded-2xl border border-line bg-paper px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-meadow"
+            />
+          </label>
+          <label className="block text-sm font-medium" htmlFor="student-no">
+            學號
+            <input
+              id="student-no"
+              required
+              inputMode="numeric"
+              maxLength={6}
+              value={studentNo}
+              onChange={(event) => setStudentNo(event.target.value)}
+              placeholder="例如：12"
+              className="mt-1 h-12 w-full rounded-2xl border border-line bg-paper px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-meadow"
+            />
+          </label>
+        </div>
+        {error ? (
+          <p className="mt-3 text-sm text-ember" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={busy}
+          className="mt-4 h-12 w-full rounded-full bg-meadow font-medium text-paper focus-visible:ring-2 focus-visible:ring-ember disabled:opacity-60"
+        >
+          {busy ? "寫緊……" : "開始問古人"}
+        </button>
+        <p className="mt-4 text-center text-sm text-muted">
+          <Link to="/teacher" className="underline">
+            教師入口
+          </Link>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+function BannedNotice() {
+  return (
+    <div className="absolute inset-0 z-50 grid place-items-center bg-ink/70 p-4">
+      <div className="w-full max-w-md rounded-3xl border border-line bg-sheet p-6 text-center shadow-lg" role="alert">
+        <p className="text-sm font-medium text-ember">第 3 次警告</p>
+        <h1 className="mt-2 font-display text-5xl leading-none">不能再使用</h1>
+        <p className="mt-3 text-pretty">你用了不尊重的說話，這個網頁已經停止。請找老師。</p>
+      </div>
+    </div>
   );
 }

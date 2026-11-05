@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { CHARACTERS, getCharacter, isCharacterId, isLens, type CharacterId, type Lens } from "@/lib/lesson";
+import { recordAsk, warningCount, addWarning } from "@/lib/roster.functions";
+import { careSpeech, isDistress, isMisconduct, lockedSpeech, safeClassroomReply, warningSpeech } from "@/lib/conduct";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -28,11 +30,14 @@ function clientIp(): string {
   }
 }
 
-function readChat(input: unknown): { characterId: CharacterId; messages: ChatTurn[] } {
+function readChat(input: unknown): { characterId: CharacterId; studentId: string; messages: ChatTurn[] } {
   if (!input || typeof input !== "object") throw new Error("問題格式不對");
-  const data = input as { characterId?: unknown; messages?: unknown };
+  const data = input as { characterId?: unknown; studentId?: unknown; messages?: unknown };
   if (typeof data.characterId !== "string" || !isCharacterId(data.characterId)) {
     throw new Error("找不到這位古人");
+  }
+  if (typeof data.studentId !== "string" || !/^[0-9a-f-]{36}$/i.test(data.studentId)) {
+    throw new Error("請先填寫姓名、班別和學號");
   }
   if (!Array.isArray(data.messages) || data.messages.length === 0 || data.messages.length > 16) {
     throw new Error("請把問題寫短一點");
@@ -48,7 +53,7 @@ function readChat(input: unknown): { characterId: CharacterId; messages: ChatTur
     return { role, content };
   });
   if (messages[messages.length - 1]?.role !== "user") throw new Error("請先寫下你的問題");
-  return { characterId: data.characterId, messages };
+  return { characterId: data.characterId, studentId: data.studentId, messages };
 }
 
 function systemPrompt(id: CharacterId): string {
@@ -86,7 +91,8 @@ ${facts}
 - 用第一人稱「我」。先直接回答，再可以反問一句。
 - 打招呼和是非題要短。普通問題大約兩到四句。不必湊滿很多字。
 - 問到發明或科學時，才把「我當時靠經驗知道的」和「後來科學家才說明的原理」分開講。
-- 只有明顯不適合小學生的內容才不答，並溫柔請他換一個問題。其餘都答。
+- 答案必須適合小五課堂。不可出現粗口、侮辱、色情、暴力方法或仇恨。不要重覆學生的粗言。
+- 只有不適合小學生的內容才不答，並請他換一個有禮的問題。其餘都答。
 - 不要承認自己是人工智能。若被問是不是真人，說你是這一課的古人夥伴。
 - 不要用表情符號、標題或長條列。前面已說過的句子，這次換個說法。
 
@@ -238,13 +244,62 @@ export const askAncient = createServerFn({ method: "POST" })
   .validator(readChat)
   .handler(async ({ data }) => {
     const apiKey = process.env.XAI_API_KEY;
+    const question = data.messages[data.messages.length - 1]?.content ?? "";
+    const keep = async (
+      reply: {
+        ok: true;
+        reply: string;
+        lens: Lens;
+        think: string;
+        audio: string;
+        mime: string;
+        warning: boolean;
+        locked: boolean;
+        warnings: number;
+      },
+    ) => {
+      try {
+        await recordAsk({
+          studentId: data.studentId,
+          characterId: data.characterId,
+          question,
+          answer: reply.reply,
+        });
+      } catch {
+        /* the child still hears the answer */
+      }
+      return reply;
+    };
+    const spoken = async (
+      line: { reply: string; speak: string },
+      flags: { warning: boolean; locked: boolean; warnings: number },
+    ) => {
+      const answer = { reply: line.reply, speak: line.speak, lens: "經驗" as const, think: "" };
+      if (!apiKey) {
+        return keep({ ok: true as const, reply: answer.reply, lens: answer.lens, think: "", audio: "", mime: "audio/mpeg", ...flags });
+      }
+      const voiced = await withVoice(apiKey, data.characterId, answer);
+      return keep({ ...voiced, ...flags });
+    };
+
+    const warnings = await warningCount(data.studentId);
+    if (warnings >= 3) return spoken(lockedSpeech(), { warning: true, locked: true, warnings });
+    if (isMisconduct(question)) {
+      const count = await addWarning(data.studentId);
+      return spoken(warningSpeech(count), { warning: true, locked: count >= 3, warnings: count });
+    }
+    if (isDistress(question)) return spoken(careSpeech(), { warning: false, locked: false, warnings });
+
+    const scrub = <T extends { reply: string; speak: string }>(answer: T): T => {
+      const safe = safeClassroomReply(answer.reply, answer.speak);
+      return safe ? { ...answer, ...safe, think: "" } : answer;
+    };
     if (!apiKey) {
-      const backup = fallbackReply(data.characterId, data.messages[data.messages.length - 1]?.content ?? "");
-      return { ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think, audio: "", mime: "audio/mpeg" };
+      const backup = scrub(fallbackReply(data.characterId, question));
+      return keep({ ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think, audio: "", mime: "audio/mpeg", warning: false, locked: false, warnings });
     }
     if (!allowRequest(clientIp())) return { ok: false as const, error: "問得太密了，休息幾秒再問。" };
 
-    const question = data.messages[data.messages.length - 1]?.content ?? "";
     const messages = [
       { role: "system", content: systemPrompt(data.characterId) },
       ...data.messages.slice(-6),
@@ -252,20 +307,20 @@ export const askAncient = createServerFn({ method: "POST" })
     const started = Date.now();
     try {
       const first = await completeAsk(apiKey, messages);
-      if (first) return await withVoice(apiKey, data.characterId, first);
+      if (first) return keep({ ...(await withVoice(apiKey, data.characterId, scrub(first))), warning: false, locked: false, warnings });
     } catch {
       /* try once more only if the first attempt failed quickly */
     }
     if (Date.now() - started < 4000) {
       try {
         const second = await completeAsk(apiKey, messages);
-        if (second) return await withVoice(apiKey, data.characterId, second);
+        if (second) return keep({ ...(await withVoice(apiKey, data.characterId, scrub(second))), warning: false, locked: false, warnings });
       } catch {
         /* use the camp fallback below */
       }
     }
-    const backup = fallbackReply(data.characterId, question);
-    return await withVoice(apiKey, data.characterId, backup);
+    const backup = scrub(fallbackReply(data.characterId, question));
+    return keep({ ...(await withVoice(apiKey, data.characterId, backup)), warning: false, locked: false, warnings });
   });
 
 async function synthesize(
