@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
-import { loadBoard, unlockTeacher, type BoardStudent } from "@/lib/roster.functions";
+import { loadBoard, unlockTeacher, clearBoard, releaseStudent, type BoardStudent } from "@/lib/roster.functions";
 
 export const Route = createFileRoute("/teacher")({
   component: TeacherPage,
@@ -42,11 +42,15 @@ function when(value: string): string {
 function TeacherPage() {
   const unlock = useServerFn(unlockTeacher);
   const load = useServerFn(loadBoard);
+  const wipe = useServerFn(clearBoard);
+  const release = useServerFn(releaseStudent);
   const [code, setCode] = useState("");
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [students, setStudents] = useState<BoardStudent[] | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmId, setConfirmId] = useState("");
 
   async function open(event: FormEvent) {
     event.preventDefault();
@@ -89,6 +93,48 @@ function TeacherPage() {
     }
   }
 
+  async function clearAll() {
+    if (!token || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await wipe({ data: { token } });
+      if (!result.ok) {
+        setError(result.error);
+        setStudents(null);
+        setToken("");
+        return;
+      }
+      setConfirmClear(false);
+      const board = await load({ data: { token } });
+      if (board.ok) setStudents(board.students);
+      else setStudents([]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "清除不到");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function releaseOne(studentId: string) {
+    if (!token || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await release({ data: { token, studentId } });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setConfirmId("");
+      setStudents((prev) => (prev ? prev.filter((student) => student.id !== studentId) : prev));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "清除不到");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const groups: { name: (typeof GRADE_CLASSES)[number] | "其他"; students: BoardStudent[] }[] = GRADE_CLASSES.map(
     (name) => ({
       name,
@@ -112,15 +158,46 @@ function TeacherPage() {
           <section className="mt-6">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-muted">共 {students.length} 位同學</p>
-              <button
-                type="button"
-                onClick={refresh}
-                disabled={busy}
-                className="h-11 rounded-full border border-line bg-sheet px-4 text-sm focus-visible:ring-2 focus-visible:ring-meadow"
-              >
-                重新整理
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={refresh}
+                  disabled={busy}
+                  className="h-11 rounded-full border border-line bg-sheet px-4 text-sm focus-visible:ring-2 focus-visible:ring-meadow"
+                >
+                  重新整理
+                </button>
+                {confirmClear ? (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    disabled={busy}
+                    className="h-11 rounded-full bg-ember px-4 text-sm font-medium text-paper focus-visible:ring-2 focus-visible:ring-meadow"
+                  >
+                    確定清除
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(true)}
+                    disabled={busy}
+                    className="h-11 rounded-full border border-ember px-4 text-sm text-ember focus-visible:ring-2 focus-visible:ring-ember"
+                  >
+                    清除所有資料
+                  </button>
+                )}
+              </div>
             </div>
+            {confirmClear ? (
+              <p className="mt-3 text-sm text-ember" role="alert">
+                會刪除全部同學的姓名、班別、警告和對話，刪除後不能還原。
+              </p>
+            ) : null}
+            {error ? (
+              <p className="mt-3 text-sm text-ember" role="alert">
+                {error}
+              </p>
+            ) : null}
             {students.length === 0 ? (
               <p className="mt-6 rounded-2xl bg-sheet p-4">還沒有同學填寫資料。</p>
             ) : (
@@ -146,6 +223,32 @@ function TeacherPage() {
                                 <span className="ml-2 text-sm text-ember">警告 {student.warnings}/3</span>
                               ) : null}
                             </h3>
+                            {student.locked ? (
+                              <div className="mt-2">
+                                {confirmId === student.id ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => releaseOne(student.id)}
+                                    disabled={busy}
+                                    className="h-11 rounded-full bg-ember px-4 text-sm font-medium text-paper focus-visible:ring-2 focus-visible:ring-meadow"
+                                  >
+                                    確定清除，讓他再玩
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmId(student.id)}
+                                    disabled={busy}
+                                    className="h-11 rounded-full border border-ember px-4 text-sm text-ember focus-visible:ring-2 focus-visible:ring-ember"
+                                  >
+                                    只清除這位同學
+                                  </button>
+                                )}
+                                {confirmId === student.id ? (
+                                  <p className="mt-2 text-sm text-ember">會刪除這位同學的對話和警告，這個學號可以再填一次。</p>
+                                ) : null}
+                              </div>
+                            ) : null}
                             {student.asks.length === 0 ? (
                               <p className="mt-2 text-sm text-muted">還沒有發問。</p>
                             ) : (

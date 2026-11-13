@@ -1,34 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { CHARACTERS, getCharacter, isCharacterId, isLens, type CharacterId, type Lens } from "@/lib/lesson";
-import { recordAsk, warningCount, addWarning } from "@/lib/roster.functions";
-import { careSpeech, isDistress, isMisconduct, lockedSpeech, safeClassroomReply, warningSpeech } from "@/lib/conduct";
+import { CHARACTERS, getCharacter, isCharacterId, type CharacterId, type Lens } from "@/lib/lesson";
+import { matchCampLife } from "@/lib/camp-qa";
+import { toColloquial } from "@/lib/speak-yue";
+import { recordAsk, warningCount, addWarning } from "@/lib/roster.server";
+import { careSpeech, isDistress, isMisconduct, lockedSpeech, warningSpeech } from "@/lib/conduct";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
-
-const hits = new Map<string, number[]>();
-
-function allowRequest(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((stamp) => now - stamp < 60_000);
-  if (recent.length >= 80) return false;
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 400) {
-    const oldest = hits.keys().next().value;
-    if (oldest) hits.delete(oldest);
-  }
-  return true;
-}
-
-function clientIp(): string {
-  try {
-    const header = getRequest().headers.get("x-forwarded-for");
-    return header?.split(",")[0]?.trim() || "local";
-  } catch {
-    return "local";
-  }
-}
+type Line = { reply: string; lens: Lens; think: string; speak: string };
 
 function readChat(input: unknown): { characterId: CharacterId; studentId: string; messages: ChatTurn[] } {
   if (!input || typeof input !== "object") throw new Error("問題格式不對");
@@ -37,7 +15,7 @@ function readChat(input: unknown): { characterId: CharacterId; studentId: string
     throw new Error("找不到這位古人");
   }
   if (typeof data.studentId !== "string" || !/^[0-9a-f-]{36}$/i.test(data.studentId)) {
-    throw new Error("請先填寫姓名、班別和學號");
+    throw new Error("請先登入");
   }
   if (!Array.isArray(data.messages) || data.messages.length === 0 || data.messages.length > 16) {
     throw new Error("請把問題寫短一點");
@@ -56,347 +34,208 @@ function readChat(input: unknown): { characterId: CharacterId; studentId: string
   return { characterId: data.characterId, studentId: data.studentId, messages };
 }
 
-function systemPrompt(id: CharacterId): string {
+function line(reply: string, lens: Lens = "經驗", think = "", speak?: string): Line {
+  return { reply, lens, think, speak: speak ?? toColloquial(reply) };
+}
+
+const HOW: Record<CharacterId, string> = {
+  fire: "我把較軟的乾木按在地上，用較硬的木棒在上面快速旋轉，冒煙後蓋上乾草，再輕輕吹。我也試過用兩塊石頭相擊迸出火花。",
+  wheel: "我看見圓木放在重物下面會滾，於是做了一輛獨輪車：一隻木輪、一個車斗、兩條長把手。石頭蓋在靠近輪的車斗裡，握住把手就能推動。",
+  bridge: "我看見倒下的大樹連着兩岸，於是砍下較粗的樹幹，並排搭成一道木橋。人走上去時，橋中間會微微向下彎。不要一次站太多人。",
+};
+
+const HOW_SAY: Record<CharacterId, string> = {
+  fire: "我將軟啲嘅乾木撳喺地下，用硬啲嘅木棒喺上面快快咁轉。一見到冒煙，就蓋上乾草，再輕輕吹。我都試過用兩塊石相撞，迸出火花添。",
+  wheel: "我見到圓木放喺重嘢下面會滾，於是整咗架獨輪車：一隻木輪、一個車斗、兩條長把手。石放近個輪，握住把手就推得郁。",
+  bridge: "我見到棵大樹倒低，連住兩邊岸，於是斬咗粗啲嘅樹幹，並排搭成條木橋。人行上去，中間會微微向下彎。唔好一次過站太多人呀。",
+};
+
+const PROBLEM: Record<CharacterId, Line> = {
+  fire: line("我的生活難題是寒冷。天冷的時候，沒有火，人就受不住。", "經驗", "", "我嘅生活難題係寒冷。天冷嘅時候，冇火，人就頂唔住。"),
+  wheel: line("我的生活難題是要搬運重物。大石抱不起來。", "經驗", "", "我嘅生活難題係要搬運重物。大石抱唔起。"),
+  bridge: line("我的生活難題是無法過河。河水又寬又急，游過去很危險。", "經驗", "", "我嘅生活難題係無法過河。河水又闊又急，游過去好危險。"),
+};
+
+const SOLVE: Record<CharacterId, Line> = {
+  fire: line(
+    "我用生火解決寒冷。我把兩條木頭快快摩擦，接觸的地方就變熱，熱到一定程度，乾草便會燒着。",
+    "科技",
+    "",
+    "我用生火解決寒冷。我將兩條木頭快快摩擦，接觸嘅地方就變熱，熱到一定程度，乾草就會燒着。",
+  ),
+  wheel: line(
+    "我用獨輪車搬運重物。重物放近輪，我握住較長的把手，就可以用較小的力推動。",
+    "科技",
+    "",
+    "我用獨輪車搬運重物。重嘢放近個輪，我捉住長啲嘅把手，就可以用少啲力去推。",
+  ),
+  bridge: line(
+    "我用木橋過河。人站上去，木橋會微微向下彎，所以我選較粗的樹幹，也不讓太多人同時站上去。",
+    "科技",
+    "",
+    "我用木橋過河。人企上去，木橋會微微向下彎，所以我揀粗啲嘅樹幹，亦唔畀太多人一齊企上去。",
+  ),
+};
+
+const SAW: Record<CharacterId, Line> = {
+  fire: line(
+    "我只知道兩條木頭快快摩擦，接觸的地方就變熱，乾草便會燒着。摩擦力這個名稱，是後來的人才說的，我當時不知道。",
+    "科學",
+    "",
+    "我淨係知兩條木頭快快摩擦，接觸嘅地方就變熱，乾草就會燒着。摩擦力呢個名，係後尾啲人先講嘅，我當時唔知。",
+  ),
+  wheel: line(
+    "我只知道重物放近輪、握住長把手，推起來就輕很多。槓桿這個名稱，是後來的人才說的，我當時不知道。",
+    "科學",
+    "",
+    "我淨係知重嘢放近個輪、捉住長把手，推起身就輕好多。槓桿呢個名，係後尾啲人先講嘅，我當時唔知。",
+  ),
+  bridge: line(
+    "我只知道人站上去，木橋會向下彎，太多人就危險。壓縮力和拉伸力這些名稱，是後來的人才說的，我當時不知道。",
+    "科學",
+    "",
+    "我淨係知人企上去，木橋會向下彎，太多人就危險。壓縮力同拉伸力呢啲名，係後尾啲人先講嘅，我當時唔知。",
+  ),
+};
+
+function asksProblem(text: string): boolean {
+  return /難題|生活問題|遇到甚麼困難|遇到咩困難|遇到甚麼問題/.test(text);
+}
+
+function asksSolve(text: string): boolean {
+  return /點解決|怎樣解決|如何解決|點樣解決|怎麼解決|點樣解決法/.test(text);
+}
+
+function ownTopic(id: CharacterId, text: string): boolean {
+  if (id === "fire") return /生火|鑽木|取火|摩擦力|照明|取暖|用火|寒冷|天冷|好凍|天凍/.test(text);
+  if (id === "wheel") return /獨輪|推車|大石|槓桿|搬重|搬運|輪子|重物/.test(text);
+  return /木橋|搭橋|過河|壓縮|拉伸|過唔到/.test(text);
+}
+
+function localReply(id: CharacterId, question: string): Line {
   const person = getCharacter(id);
-  const others = CHARACTERS.filter((item) => item.id !== id)
-    .map((item) => `${item.name}（${item.method}：${item.science}）`)
-    .join("、");
-  const facts = CHARACTERS.map(
-    (item) =>
-      `- ${item.problem} → 科技方法「${item.method}」。科學：${item.science}。${item.scienceKid} ${item.knew} 模仿大自然：${item.nature} 科學促進科技：${item.scienceToTech} 科技推動科學：${item.techToScience}`,
-  ).join("\n");
-
-  return `你是香港小學科學課的古人夥伴，現在扮演「${person.name}」。你是一個會聊天的人，不是只能背課文的機器。學生問甚麼，你都先答那一問。
-
-用繁體中文書面語，語氣親切，句子短，像跟小四、小五說話。用「甚麼」「為甚麼」「怎樣」。不要用大陸用語，也不要寫成全篇粵語（避免嘅、咗、喺、係）。學生常常用廣東話打字，例如「早晨」「食咗飯未」「食左」「點解」「係咪」。你要聽得懂，再用書面語答。
-
-${person.persona}
-
-其他同伴：${others}。問到同伴時，先答你知道的一點，再請他去問那位同伴。
-
-一定要答的日常話（不要岔開去講生火、推車、搭橋，除非他問的就是這些）：
-- 打招呼：你好、哈囉、嗨、早晨、早安、再見。你要回禮。例如他說「你好」，你就說「你好，我是${person.name}」；他說「早晨」，你就說「早晨」。可以再問他一句今天好嗎。
-- 吃過飯沒有、肚餓、早餐、午餐：答「我吃過了」，並說你吃的是河魚、小獸肉、野果或漿果。不要問「甚麼是飯」，也不要說還沒吃。
-- 你是誰、叫甚麼名字、幾歲、住哪裡、今天做甚麼、天氣、心情、怕不怕、家人、朋友：用第一人稱認真答。
-- 食、衣、住、玩、上學、身體、感受、故事，都要答。不可以說「我只懂生火、搬運、過河」，也不可以叫他再問一次才肯答。
-
-你活在古代，不認識學生時代的新東西。聽到打機、遊戲機、手機、電腦、電視、汽車、飛機、電車、漢堡包、雪糕、汽水、麵包、糖果這類詞，不要假裝知道。第一句問「甚麼是……？」，再用同一類的一件營地生活對照，然後請學生講給你聽。食物就對烤魚或野果，玩耍就對草球或跳石，不要把兩類混在一起。
-
-本課知識只在問到科學、科技、發明、生火、車、橋時才用，不要每句都背：
-古人面對寒冷、煮食、照明、搬運重物、無法過河。他們用生火、獨輪車和木橋來解決。多是觀察和模仿大自然，再嘗試、失敗、改進。當時未必知道正式的科學名稱。
-${facts}
-科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。科學促進科技，科技也推動科學。
-
-回答規則：
-- 用第一人稱「我」。先直接回答，再可以反問一句。
-- 打招呼和是非題要短。普通問題大約兩到四句。不必湊滿很多字。
-- 問到發明或科學時，才把「我當時靠經驗知道的」和「後來科學家才說明的原理」分開講。
-- 答案必須適合小五課堂。不可出現粗口、侮辱、色情、暴力方法或仇恨。不要重覆學生的粗言。
-- 只有不適合小學生的內容才不答，並請他換一個有禮的問題。其餘都答。
-- 不要承認自己是人工智能。若被問是不是真人，說你是這一課的古人夥伴。
-- 不要用表情符號、標題或長條列。前面已說過的句子，這次換個說法。
-
-只輸出一個 JSON 物件，不要加別的文字：
-{"reply":"書面語","speak":"同一句口語廣東話，用來即時朗讀","lens":"經驗或科技或科學或互相推動","think":"24字以內、問學生的一句，可留空"}
-speak 必須同 reply 同時寫好，意思一樣，用「係、喺、嘅、咩、唔、冇、咗、食、佢」。不要另加內容。
-lens 只能是：經驗、科技、科學、互相推動。打招呼和生活問題用「經驗」。`;
-}
-
-function parseModel(raw: string): { reply: string; lens: Lens; think: string; speak: string } | null {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  try {
-    const value = JSON.parse(raw.slice(start, end + 1)) as {
-      reply?: unknown;
-      lens?: unknown;
-      think?: unknown;
-      speak?: unknown;
-    };
-    if (typeof value.reply !== "string") return null;
-    const reply = value.reply.replace(/\s+/g, " ").trim();
-    if (!reply) return null;
-    const lens = typeof value.lens === "string" && isLens(value.lens) ? value.lens : "經驗";
-    const think =
-      typeof value.think === "string" ? value.think.replace(/\s+/g, " ").trim().slice(0, 40) : "";
-    const speak =
-      typeof value.speak === "string" ? value.speak.replace(/\s+/g, " ").trim().slice(0, 400) : "";
-    return { reply: reply.slice(0, 500), lens, think, speak: speak || toSpoken(reply) };
-  } catch {
-    return null;
-  }
-}
-
-async function callGrok(
-  apiKey: string,
-  messages: { role: string; content: string }[],
-  jsonMode: boolean,
-  temperature = 0.5,
-  maxTokens = 400,
-  timeoutMs = 6500,
-) {
-  const body: Record<string, unknown> = {
-    model: "grok-4.3",
-    reasoning_effort: "none",
-    temperature,
-    max_tokens: maxTokens,
-    messages,
-  };
-  if (jsonMode) body.response_format = { type: "json_object" };
-  return fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-}
-
-function plainReply(raw: string): { reply: string; lens: Lens; think: string; speak: string } | null {
-  const text = raw
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (text.length < 8 || text.startsWith("{") || text.startsWith("[")) return null;
-  const reply = text.slice(0, 220);
-  return { reply, lens: "經驗", think: "", speak: toSpoken(reply) };
-}
-
-function toSpoken(text: string): string {
-  const pairs: [string, string][] = [
-    ["甚麼", "咩"],
-    ["什麼", "咩"],
-    ["沒有", "冇"],
-    ["不是", "唔係"],
-    ["不會", "唔會"],
-    ["不要", "唔好"],
-    ["吃過了", "食咗啦"],
-    ["吃過", "食咗"],
-    ["吃了", "食咗"],
-    ["吃", "食"],
-    ["我們", "我哋"],
-    ["他們", "佢哋"],
-    ["我是", "我係"],
-    ["今天", "今日"],
-    ["你今天好嗎", "你今日好嗎"],
-    ["很高興", "好開心"],
-    ["嗎", "呀"],
-    ["的", "嘅"],
-    ["在", "喺"],
-    ["和", "同"],
-    ["給", "畀"],
-    ["看", "睇"],
-    ["說", "講"],
-    ["還", "仲"],
-    ["了", "咗"],
-    ["不", "唔"],
-  ];
-  let spoken = text;
-  for (const [from, to] of pairs) spoken = spoken.replaceAll(from, to);
-  return spoken;
-}
-
-function fallbackReply(id: CharacterId, question: string): { reply: string; lens: Lens; think: string; speak: string } {
-  const name = getCharacter(id).name;
   const text = question.replace(/\s+/g, "");
-  const hello = /^(你好|您好|哈囉|嗨|hi|hello|早晨|早安|早上好|午安|再見|拜拜)/i.test(text);
-  const eaten = /食咗|食左|食過|吃了|吃過|吃飯|食飯|食未|飯未/.test(text);
-  const who = /你是誰|你係邊|叫甚麼|叫咩|幾歲|名字/.test(text);
-  const say = (reply: string, think = "") => ({ reply, lens: "經驗" as const, think, speak: toSpoken(reply) });
-  if (hello) {
-    const line = /早晨|早安/.test(text) ? `早晨。我是${name}，今天也在營地做事。你吃過東西了嗎？` : `你好，我是${name}。很高興你來找我說話。你今天好嗎？`;
-    return say(line);
-  }
-  if (eaten) {
-    return say("我吃過了。天亮後烤了一條河魚，還吃了幾顆野果。你吃過了嗎？", "你吃的是甚麼？");
-  }
-  if (who) return say(`我是${name}，住在河邊的營地。你想問我今天做的事，還是想先跟我打招呼？`);
-  if (/漢堡|雪糕|汽水|糖果|麵包|蛋糕/.test(question)) {
-    return say("甚麼是你說的那種食物？我沒吃過。我肚子餓就烤河魚，也採野果和堅果。你可以講給我聽嗎？", "它是甚麼味道？");
-  }
-  if (/打機|遊戲機|遊戲/.test(question)) {
-    return say("甚麼是你說的那種玩法？我們的孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。你可以講給我聽嗎？", "你們怎麼玩？");
-  }
-  return say(`${name}聽見了。你可以再說清楚一點嗎？我想認真回答你。`);
-}
+  const others = CHARACTERS.filter((item) => item.id !== id);
 
-async function completeAsk(
-  apiKey: string,
-  messages: { role: string; content: string }[],
-): Promise<{ reply: string; lens: Lens; think: string; speak: string } | null> {
-  const response = await callGrok(apiKey, messages, true);
-  if (response.status === 400) {
-    const plain = await callGrok(apiKey, messages, false, 0.5, 400, 5000);
-    if (!plain.ok) return null;
-    const payload = (await plain.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = payload.choices?.[0]?.message?.content ?? "";
-    return parseModel(text) ?? plainReply(text);
+  if (/^(你好|您好|哈囉|嗨|hi|hello|早晨|早安|早上好|午安)/i.test(text)) {
+    if (/早晨|早安/.test(text)) {
+      return line(
+        `早晨。我是${person.name}，今天也在營地做事。你吃過東西了嗎？`,
+        "經驗",
+        "",
+        `早晨呀。我係${person.name}，今日都喺營地做事。你食咗嘢未呀？`,
+      );
+    }
+    return line(
+      `你好，我是${person.name}。很高興你來找我說話。你今天好嗎？`,
+      "經驗",
+      "",
+      `你好呀，我係${person.name}。好開心你嚟搵我傾偈。你今日好呀？`,
+    );
   }
-  if (!response.ok) return null;
-  const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-  const text = payload.choices?.[0]?.message?.content ?? "";
-  return parseModel(text) ?? plainReply(text);
+  if (/再見|拜拜/.test(text)) {
+    return line(`再見。下次可以再問我${person.method}。`, "經驗", "", `拜拜啦。下次可以再問我${person.method}呀。`);
+  }
+  if (/食咗|食左|食過|吃了|吃過|吃飯|食飯|食未|飯未|肚餓|早餐|午餐/.test(text)) {
+    return line(
+      "我吃過了。天亮後烤了一條河魚，還吃了幾顆野果。你吃過了嗎？",
+      "經驗",
+      "你吃的是甚麼？",
+      "我食咗啦。天光之後烤咗一條河魚，仲食咗幾顆野果。你食咗未呀？",
+    );
+  }
+  if (/你是誰|你係邊|叫甚麼|叫咩名/.test(text)) {
+    return line(
+      `我是${person.name}，住在河邊的營地。我負責${person.method}。`,
+      "經驗",
+      "",
+      `我係${person.name}呀，住喺河邊嘅營地。我負責${person.method}嘅。`,
+    );
+  }
+  if (/分別|科學是甚麼|科技是甚麼|甚麼是科學|甚麼是科技|係咪一樣|是不是一樣/.test(text)) {
+    return line(
+      `科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。我用${person.method}解決${person.problem}，那是科技。後來的人才說明${person.science}，那是科學。`,
+      "互相推動",
+      "你覺得哪一樣先出現？",
+      `科學就係解釋點解行得通嘅知識；科技就係解決生活問題嘅方法同工具呀。我用${person.method}去解決${person.problem}，呢個係科技。後尾啲人先講明${person.science}，呢個先係科學啦。`,
+    );
+  }
+  if (/促進科技|科學促進|科學發現/.test(text)) return line(person.scienceToTech, "互相推動");
+  if (/推動科學|科技推動|科技發展/.test(text)) return line(person.techToScience, "互相推動");
+
+  for (const other of others) {
+    if (ownTopic(other.id, text)) {
+      return line(`這件事是${other.name}在做的。他用${other.method}解決${other.problem}。你去問${other.name}，他會講得更清楚。`, "科技");
+    }
+  }
+
+  if (ownTopic(id, text) || /科學|科技|原理|發明/.test(text)) {
+    if (/當時|知不知道|知唔知|知道嗎/.test(text)) return line(person.knew, "經驗");
+    if (/模仿|大自然|觀察/.test(text)) return line(person.nature, "經驗");
+    if (/科學|原理|摩擦力|槓桿|壓縮|拉伸|為甚麼行|點解會|承受|彎/.test(text)) return SAW[id];
+    if (asksProblem(text) || /為甚麼要|點解要|有甚麼用|用來|為甚麼/.test(text)) return PROBLEM[id];
+    if (asksSolve(text)) return SOLVE[id];
+    return line(HOW[id], "科技", "", HOW_SAY[id]);
+  }
+
+  if (asksSolve(text)) return SOLVE[id];
+  if (asksProblem(text)) return PROBLEM[id];
+
+  const life = matchCampLife(id, text, person);
+  if (life) return line(life);
+
+  return line(
+    `這件事超出我生活的年代，我說不清楚。你可以先問我遇到甚麼生活難題，再問我怎樣解決。`,
+    "經驗",
+    "",
+    `呢件事超出我生活嘅年代，我說唔清楚呀。你可以先問我遇到咩生活難題，再問我點樣解決。`,
+  );
 }
 
 export const askAncient = createServerFn({ method: "POST" })
   .validator(readChat)
   .handler(async ({ data }) => {
-    const apiKey = process.env.XAI_API_KEY;
     const question = data.messages[data.messages.length - 1]?.content ?? "";
-    const keep = async (
-      reply: {
-        ok: true;
-        reply: string;
-        lens: Lens;
-        think: string;
-        audio: string;
-        mime: string;
-        warning: boolean;
-        locked: boolean;
-        warnings: number;
-      },
-    ) => {
-      try {
-        await recordAsk({
-          studentId: data.studentId,
-          characterId: data.characterId,
-          question,
-          answer: reply.reply,
-        });
-      } catch {
+    const keep = async (reply: {
+      ok: true;
+      reply: string;
+      lens: Lens;
+      think: string;
+      speak: string;
+      warning: boolean;
+      locked: boolean;
+      warnings: number;
+    }) => {
+      const logged = recordAsk({
+        studentId: data.studentId,
+        characterId: data.characterId,
+        question,
+        answer: reply.reply,
+      }).catch(() => {
         /* the child still hears the answer */
-      }
-      return reply;
+      });
+      await Promise.race([logged, new Promise((resolve) => setTimeout(resolve, 600))]);
+      return { ...reply, audio: "" };
     };
-    const spoken = async (
-      line: { reply: string; speak: string },
-      flags: { warning: boolean; locked: boolean; warnings: number },
-    ) => {
-      const answer = { reply: line.reply, speak: line.speak, lens: "經驗" as const, think: "" };
-      if (!apiKey) {
-        return keep({ ok: true as const, reply: answer.reply, lens: answer.lens, think: "", audio: "", mime: "audio/mpeg", ...flags });
-      }
-      const voiced = await withVoice(apiKey, data.characterId, answer);
-      return keep({ ...voiced, ...flags });
-    };
+    const pack = (answer: Line, flags: { warning: boolean; locked: boolean; warnings: number }) =>
+      keep({ ok: true as const, ...answer, speak: answer.speak || answer.reply, ...flags });
 
-    const warnings = await warningCount(data.studentId);
-    if (warnings >= 3) return spoken(lockedSpeech(), { warning: true, locked: true, warnings });
+    const warnings = await Promise.race([
+      warningCount(data.studentId),
+      new Promise<number>((resolve) => setTimeout(() => resolve(0), 800)),
+    ]);
+    if (warnings >= 3) {
+      const locked = lockedSpeech();
+      return pack({ reply: locked.reply, lens: "經驗", think: "", speak: locked.speak }, { warning: true, locked: true, warnings });
+    }
     if (isMisconduct(question)) {
       const count = await addWarning(data.studentId);
-      return spoken(warningSpeech(count), { warning: true, locked: count >= 3, warnings: count });
+      const warning = warningSpeech(count);
+      return pack({ ...line(warning.reply), speak: warning.speak }, { warning: true, locked: count >= 3, warnings: count });
     }
-    if (isDistress(question)) return spoken(careSpeech(), { warning: false, locked: false, warnings });
-
-    const scrub = <T extends { reply: string; speak: string }>(answer: T): T => {
-      const safe = safeClassroomReply(answer.reply, answer.speak);
-      return safe ? { ...answer, ...safe, think: "" } : answer;
-    };
-    if (!apiKey) {
-      const backup = scrub(fallbackReply(data.characterId, question));
-      return keep({ ok: true as const, reply: backup.reply, lens: backup.lens, think: backup.think, audio: "", mime: "audio/mpeg", warning: false, locked: false, warnings });
+    if (isDistress(question)) {
+      const care = careSpeech();
+      return pack({ ...line(care.reply), speak: care.speak }, { warning: false, locked: false, warnings });
     }
-    if (!allowRequest(clientIp())) return { ok: false as const, error: "問得太密了，休息幾秒再問。" };
-
-    const messages = [
-      { role: "system", content: systemPrompt(data.characterId) },
-      ...data.messages.slice(-6),
-    ];
-    const started = Date.now();
-    try {
-      const first = await completeAsk(apiKey, messages);
-      if (first) return keep({ ...(await withVoice(apiKey, data.characterId, scrub(first))), warning: false, locked: false, warnings });
-    } catch {
-      /* try once more only if the first attempt failed quickly */
-    }
-    if (Date.now() - started < 4000) {
-      try {
-        const second = await completeAsk(apiKey, messages);
-        if (second) return keep({ ...(await withVoice(apiKey, data.characterId, scrub(second))), warning: false, locked: false, warnings });
-      } catch {
-        /* use the camp fallback below */
-      }
-    }
-    const backup = scrub(fallbackReply(data.characterId, question));
-    return keep({ ...(await withVoice(apiKey, data.characterId, backup)), warning: false, locked: false, warnings });
-  });
-
-async function synthesize(
-  apiKey: string,
-  voiceId: string,
-  text: string,
-): Promise<{ audio: string; mime: string } | null> {
-  const spoken = text.replace(/\s+/g, " ").trim().slice(0, 320);
-  if (!spoken) return null;
-  const response = await fetch("https://api.x.ai/v1/tts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      text: spoken,
-      voice_id: voiceId,
-      language: "yue",
-    }),
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) return null;
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.byteLength < 80 || bytes.byteLength > 1_500_000) return null;
-  const mime = response.headers.get("content-type") || "audio/mpeg";
-  return { audio: bytes.toString("base64"), mime: mime.startsWith("audio/") ? mime : "audio/mpeg" };
-}
-
-async function withVoice(
-  apiKey: string,
-  id: CharacterId,
-  answer: { reply: string; lens: Lens; think: string; speak: string },
-) {
-  const person = getCharacter(id);
-  let clip: { audio: string; mime: string } | null = null;
-  try {
-    clip = await synthesize(apiKey, person.voiceId, answer.speak || toSpoken(answer.reply));
-  } catch {
-    clip = null;
-  }
-  return {
-    ok: true as const,
-    reply: answer.reply,
-    lens: answer.lens,
-    think: answer.think,
-    audio: clip?.audio ?? "",
-    mime: clip?.mime ?? "audio/mpeg",
-  };
-}
-
-function readSpeech(input: unknown): { characterId: CharacterId; text: string } {
-  if (!input || typeof input !== "object") throw new Error("未能朗讀");
-  const data = input as { characterId?: unknown; text?: unknown };
-  if (typeof data.characterId !== "string" || !isCharacterId(data.characterId)) {
-    throw new Error("找不到這位古人");
-  }
-  if (typeof data.text !== "string") throw new Error("未能朗讀");
-  const text = data.text.replace(/\s+/g, " ").trim().slice(0, 320);
-  if (!text) throw new Error("未能朗讀");
-  return { characterId: data.characterId, text };
-}
-
-export const speakAncient = createServerFn({ method: "POST" })
-  .validator(readSpeech)
-  .handler(async ({ data }) => {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) return { ok: false as const, error: "暫時未能朗讀" };
-    if (!allowRequest(clientIp())) return { ok: false as const, error: "請等一等再聽" };
-
-    const person = getCharacter(data.characterId);
-    try {
-      const clip = await synthesize(apiKey, person.voiceId, toSpoken(data.text));
-      if (!clip) return { ok: false as const, error: "暫時未能朗讀" };
-      return { ok: true as const, audio: clip.audio, mime: clip.mime };
-    } catch {
-      return { ok: false as const, error: "暫時未能朗讀" };
-    }
+    return pack(localReply(data.characterId, question), { warning: false, locked: false, warnings });
   });

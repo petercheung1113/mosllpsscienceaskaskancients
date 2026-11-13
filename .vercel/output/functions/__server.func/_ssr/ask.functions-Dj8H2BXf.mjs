@@ -1,0 +1,1312 @@
+import { t as createServerFn } from "./ssr.mjs";
+import { t as createServerRpc } from "./createServerRpc-A6pJPYTF.mjs";
+import { i as isCharacterId, r as getCharacter, t as CHARACTERS } from "./lesson-DvXosKj2.mjs";
+import { n as toColloquial } from "./speak-yue-C8YC4yGG.mjs";
+import { a as warningSpeech, i as lockedSpeech, n as isDistress, r as isMisconduct, t as careSpeech } from "./conduct-CRoEMSDo.mjs";
+import { addWarning, recordAsk, warningCount } from "./roster.server-YDYH-MUK.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/ask.functions-Dj8H2BXf.js
+var FRAMES = [
+	(stem) => stem,
+	(stem) => `平時${stem}`,
+	(stem) => `你平時${stem}`,
+	(stem) => `你${stem}嗎`,
+	(stem) => `你會${stem}嗎`,
+	(stem) => `古時點${stem}`,
+	(stem) => `你點樣${stem}`,
+	(stem) => `你識唔識${stem}`,
+	(stem) => `我想問${stem}`,
+	(stem) => `可唔可以講下${stem}`
+];
+var TOPICS = [
+	{
+		stem: "去廁所",
+		extra: [
+			"平時點去廁所",
+			"廁所",
+			"古時有冇廁所",
+			"去邊度屙",
+			"方便"
+		],
+		answer: "我們沒有你們那種廁所。小便走到樹叢或河邊下風的地方，大便就挖一個淺坑，完事用泥土蓋好，然後去河邊洗手。"
+	},
+	{
+		stem: "屙尿",
+		extra: [
+			"小便",
+			"拉尿",
+			"小便去邊"
+		],
+		answer: "我走到樹叢或河邊下風的地方小便，然後去河邊洗手。我們沒有廁所。"
+	},
+	{
+		stem: "屙屎",
+		extra: [
+			"大便",
+			"拉屎",
+			"大便去邊"
+		],
+		answer: "大便時我挖一個淺坑，完事用泥土蓋上，免得招來野獸，然後去河邊洗手。"
+	},
+	{
+		stem: "洗手",
+		extra: [
+			"洗唔洗手",
+			"清潔",
+			"乾淨"
+		],
+		answer: "做完髒事、吃東西之前，我都去河邊洗手。沒有肥皂，就用細沙和水搓一搓。"
+	},
+	{
+		stem: "洗澡",
+		extra: [
+			"沖涼",
+			"洗身",
+			"點樣洗澡"
+		],
+		answer: "天暖時我跳進淺水裡洗澡，用細沙搓身體。天冷就只用濕布抹一抹。"
+	},
+	{
+		stem: "食咩",
+		extra: [
+			"平時食咩",
+			"食乜",
+			"食嘢",
+			"食啲咩",
+			"吃甚麼",
+			"吃什麼",
+			"吃的是甚麼"
+		],
+		answer: "我平時吃烤河魚、小獸的肉、野果、漿果和堅果。餓了就去抓魚或採果。"
+	},
+	{
+		stem: "食魚",
+		extra: [
+			"河魚",
+			"吃魚",
+			"釣魚"
+		],
+		answer: "河裡有魚。我用尖木叉魚，或用藤蔓編成網，然後架在火上烤來吃。"
+	},
+	{
+		stem: "食肉",
+		extra: [
+			"打獵",
+			"狩獵",
+			"小獸"
+		],
+		answer: "我們會捉小獸。肉要用火烤熟才吃，生肉容易讓人肚子痛。"
+	},
+	{
+		stem: "食水果",
+		extra: [
+			"野果",
+			"水果",
+			"漿果",
+			"摘果"
+		],
+		answer: "河邊和林邊有野果、漿果。我只摘熟的，不認識的果子不敢吃。"
+	},
+	{
+		stem: "食堅果",
+		extra: ["堅果", "果仁"],
+		answer: "秋天我們撿堅果，敲開來吃，也留一些給冬天。"
+	},
+	{
+		stem: "飲水",
+		extra: [
+			"喝水",
+			"口渴",
+			"好渴",
+			"渴"
+		],
+		answer: "渴了我就喝河水。看不清的水，我會先燒開才喝。"
+	},
+	{
+		stem: "燒開水",
+		extra: ["生水", "煮水"],
+		answer: "我把水放在燒熱的石坑或陶土碗裡燒開。燒開的水喝了比較不容易肚子痛。"
+	},
+	{
+		stem: "煮飯",
+		extra: [
+			"點煮",
+			"烤食物",
+			"煮食"
+		],
+		answer: "我沒有爐灶。魚和肉架在火上烤，果子有時直接吃，有時放在熱石頭上烘。"
+	},
+	{
+		stem: "早餐",
+		extra: ["早晨食", "早餐食咩"],
+		answer: "天亮後我吃一點昨晚留下的烤魚，再摘幾顆野果。沒有剩下的，就先去找食物。"
+	},
+	{
+		stem: "午餐",
+		extra: ["中午食", "晏晝食"],
+		answer: "中午我常在河邊烤一條魚，或者分堅果給一起做事的人。"
+	},
+	{
+		stem: "晚餐",
+		extra: ["夜晚食", "晚上食"],
+		answer: "天黑前我們圍着火一起吃。有魚就分魚，有果子就分果子。"
+	},
+	{
+		stem: "肚餓",
+		extra: [
+			"好餓",
+			"饑",
+			"沒食物"
+		],
+		answer: "肚子餓我就去河裡叉魚，或到林邊找熟透的野果。找不到就先喝水，再跟同伴一起找。"
+	},
+	{
+		stem: "零食",
+		extra: ["小食", "零食是甚麼"],
+		answer: "甚麼是零食？我沒有這種食物。肚子餓就吃魚、肉或野果，不會隨時抓一把來吃。"
+	},
+	{
+		stem: "漢堡",
+		extra: [
+			"雪糕",
+			"汽水",
+			"糖果",
+			"麵包",
+			"蛋糕",
+			"披薩"
+		],
+		answer: "甚麼是你說的那種食物？我沒吃過。我肚子餓就烤河魚，也採野果和堅果。你可以講給我聽嗎？"
+	},
+	{
+		stem: "得閒",
+		extra: [
+			"你得閒會做咩",
+			"得閒做咩",
+			"空閒",
+			"休息時",
+			"冇事做"
+		],
+		who: "fire",
+		answer: "得閒我就照看火堆，添乾草，也跟孩子說今天看見的事。"
+	},
+	{
+		stem: "得閒",
+		extra: [
+			"你得閒會做咩",
+			"得閒做咩",
+			"空閒",
+			"休息時",
+			"冇事做"
+		],
+		who: "wheel",
+		answer: "得閒我就修一修輪子，或者跟孩子把草球踢來踢去。"
+	},
+	{
+		stem: "得閒",
+		extra: [
+			"你得閒會做咩",
+			"得閒做咩",
+			"空閒",
+			"休息時",
+			"冇事做"
+		],
+		who: "bridge",
+		answer: "得閒我就在木橋上走一走，看看樹幹穩不穩，也看河水流向哪裡。"
+	},
+	{
+		stem: "玩耍",
+		extra: [
+			"玩咩",
+			"玩乜",
+			"玩嘢",
+			"點玩",
+			"遊戲"
+		],
+		answer: "孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。我有時也跟他們一起玩。"
+	},
+	{
+		stem: "玩具",
+		extra: ["有冇玩具", "公仔"],
+		answer: "我們沒有買來的玩具。孩子玩草球、石子、小木棒，也用泥捏小動物。"
+	},
+	{
+		stem: "踢波",
+		extra: [
+			"草球",
+			"踢球",
+			"足球"
+		],
+		answer: "我們把乾草紮成圓球來踢，看誰先踢到河邊的大石。沒有皮球。"
+	},
+	{
+		stem: "游水",
+		extra: [
+			"游泳",
+			"落水",
+			"游河"
+		],
+		answer: "淺水可以玩，深水和急流很危險。我不會游去對岸，過河要走木橋。"
+	},
+	{
+		stem: "瞓覺",
+		extra: [
+			"睡覺",
+			"夜晚瞓",
+			"眠覺",
+			"幾點瞓"
+		],
+		answer: "天黑、火堆穩定之後我就睡。天亮鳥叫，我就起來做事。"
+	},
+	{
+		stem: "瞓邊",
+		extra: [
+			"床",
+			"有冇床",
+			"睡在哪",
+			"被"
+		],
+		answer: "我睡在山洞裡或草棚下，地上鋪乾草和獸皮。沒有床，也沒有棉被。"
+	},
+	{
+		stem: "發夢",
+		extra: ["做夢", "夢"],
+		answer: "我有時夢見河、火和奔跑的小獸。醒來就告訴同伴，大家一起笑一笑。"
+	},
+	{
+		stem: "起身",
+		extra: [
+			"早晨做咩",
+			"晨早",
+			"晨早做咩"
+		],
+		answer: "鳥一叫我就起來，先看火還在不在，再去河邊洗脸、找今天的食物。"
+	},
+	{
+		stem: "著衫",
+		extra: [
+			"衣服",
+			"衫",
+			"穿什麼",
+			"着衫"
+		],
+		answer: "我穿獸皮和粗織的草麻衣。天冷就多披一張皮，天熱就穿少一點。"
+	},
+	{
+		stem: "著鞋",
+		extra: [
+			"鞋",
+			"赤腳",
+			"有冇鞋"
+		],
+		answer: "我多數赤腳。石路太利時，就用草繩把軟皮綁在腳上。"
+	},
+	{
+		stem: "天氣凍",
+		extra: [
+			"好凍",
+			"寒冷",
+			"冬天",
+			"點保暖"
+		],
+		answer: "天冷我就靠近火，多披一張獸皮，也跟同伴挨在一起睡。火是我們保暖的方法。"
+	},
+	{
+		stem: "好熱",
+		extra: [
+			"夏天",
+			"酷熱",
+			"好熱"
+		],
+		answer: "天熱我就躲到樹蔭，跳進淺水裡泡一泡，中午少做重活。"
+	},
+	{
+		stem: "落雨",
+		extra: [
+			"下雨",
+			"避雨",
+			"雨天"
+		],
+		answer: "下雨我就進山洞或鑽到樹葉密的地方。火要小心遮住，不然會熄掉。"
+	},
+	{
+		stem: "住邊",
+		extra: [
+			"屋",
+			"山洞",
+			"帳篷",
+			"屋企",
+			"家在哪"
+		],
+		answer: "我住在河邊的營地。晚上多睡山洞，洞口生着火，野獸就不敢靠近。"
+	},
+	{
+		stem: "家人",
+		extra: [
+			"爸爸",
+			"媽媽",
+			"父母",
+			"屋企人",
+			"屋企"
+		],
+		answer: "我同營地的人一起生活，像一家人。大家一起找食物、顧火、照顧小孩。"
+	},
+	{
+		stem: "兄弟",
+		extra: [
+			"家姐",
+			"細佬",
+			"哥哥",
+			"姐姐",
+			"兄弟姐妹"
+		],
+		answer: "營地裡有比我年長的人，也有小孩。我們不以你們的家姐細佬來分，但會互相照顧。"
+	},
+	{
+		stem: "小朋友",
+		extra: [
+			"孩子",
+			"細路",
+			"兒童"
+		],
+		answer: "營地有小孩。他們學找果子、學看火，也學不要走到橋中間。大人會看着他們。"
+	},
+	{
+		stem: "幾歲",
+		extra: [
+			"年紀",
+			"今年幾多歲",
+			"多大"
+		],
+		answer: "我沒有數過自己幾歲。我只知道自己在河邊營地住了很久，已經會做事。"
+	},
+	{
+		stem: "朋友",
+		extra: [
+			"有冇朋友",
+			"好友",
+			"朋友係邊個"
+		],
+		answer: "我的朋友就是營地的同伴。我們一起做事，也一起吃東西。"
+	},
+	{
+		stem: "寵物",
+		extra: [
+			"狗",
+			"貓",
+			"養狗",
+			"養貓"
+		],
+		answer: "我們沒有關在家裡的貓狗。有時野狗遠遠跟着營地，我們把骨頭丟給牠，牠就幫我們看着四周。"
+	},
+	{
+		stem: "動物",
+		extra: [
+			"野獸",
+			"有咩動物",
+			"森林動物"
+		],
+		answer: "河邊有魚、雀鳥、小獸，林裡有時有大蛇。看見不認識的野獸，我們會慢慢退開。"
+	},
+	{
+		stem: "雀仔",
+		extra: [
+			"鳥",
+			"雀",
+			"鳥叫"
+		],
+		answer: "清晨雀鳥叫，我就知道該起來了。孩子會學鳥叫，看誰先把河邊的雀引過來。"
+	},
+	{
+		stem: "蛇",
+		extra: ["怕蛇", "有蛇"],
+		answer: "草叢裡可能有蛇。我走路先用木棒撥一撥草，看見蛇就站着不動，等牠走。"
+	},
+	{
+		stem: "熊",
+		extra: ["大熊", "怕熊"],
+		answer: "大獸很少走到河邊。如果看見，我們不追，慢慢退回有火的地方。火能讓牠不敢靠近。"
+	},
+	{
+		stem: "驚唔驚",
+		extra: [
+			"害怕",
+			"怕黑",
+			"怕唔怕",
+			"驚黑"
+		],
+		answer: "我怕急流，也怕完全沒有火的黑夜。所以洞口的火要留着，過河一定走木橋。"
+	},
+	{
+		stem: "生病",
+		extra: [
+			"不舒服",
+			"發燒",
+			"病",
+			"肚痛"
+		],
+		answer: "生病就休息，喝燒開的水，吃熟的食物。嚴重的話，長者會用他們認識的葉子敷一敷。我不是醫生。"
+	},
+	{
+		stem: "受傷",
+		extra: [
+			"流血",
+			"跌親",
+			"跌到",
+			"傷口"
+		],
+		answer: "如果割傷，我用清水沖乾淨，再壓住傷口，用乾淨的軟皮包好，然後休息。"
+	},
+	{
+		stem: "頭髮",
+		extra: ["點梳頭", "頭髮長"],
+		answer: "頭髮長了，我就用骨梳梳一梳，或用草繩綁起來，免得做事時擋住眼睛。"
+	},
+	{
+		stem: "牙齒",
+		extra: ["刷牙", "蛀牙"],
+		answer: "我沒有牙刷。吃完東西就喝水漱口，有時用細枝輕輕刮牙齒。"
+	},
+	{
+		stem: "上學",
+		extra: [
+			"學校",
+			"讀書",
+			"功課",
+			"考試",
+			"老師"
+		],
+		answer: "我們沒有學校，也沒有功課和考試。小孩跟着大人看、試、做錯了再學。"
+	},
+	{
+		stem: "寫字",
+		extra: [
+			"文字",
+			"書",
+			"識唔識字"
+		],
+		answer: "我不會寫你們的字，也沒有書。要記住事情，就說給別人聽，或在樹上刻一個記號。"
+	},
+	{
+		stem: "識數",
+		extra: [
+			"數字",
+			"數學",
+			"數數"
+		],
+		answer: "我會數魚有幾條、人有幾個、樹幹要幾根。數目很大的時候，我就用石子一顆顆對着數。"
+	},
+	{
+		stem: "唱歌",
+		extra: [
+			"音樂",
+			"歌",
+			"唱歌"
+		],
+		answer: "晚上圍着火，我們會拍手唱歌。歌詞多是今天的河、火和抓到的魚。"
+	},
+	{
+		stem: "跳舞",
+		extra: ["跳舞"],
+		answer: "高興的時候，大家圍着火踏步、拍手。沒有舞台，草地就是我們的地方。"
+	},
+	{
+		stem: "畫畫",
+		extra: ["畫圖", "壁畫"],
+		answer: "有人用燒黑的木枝在石上畫魚和獸。我畫得不好，但喜歡看。"
+	},
+	{
+		stem: "講故事",
+		extra: ["故事", "講古"],
+		answer: "夜晚我講今天看見的事。講得多的故事，小孩會記住，下一次再講給更小的孩子聽。"
+	},
+	{
+		stem: "時間",
+		extra: [
+			"幾點",
+			"時鐘",
+			"鐘",
+			"幾點鐘"
+		],
+		answer: "我沒有時鐘。看太陽升到哪裡，就知道是早上、中午還是該回家的時候。"
+	},
+	{
+		stem: "日曆",
+		extra: [
+			"年份",
+			"今日幾號",
+			"星期"
+		],
+		answer: "我沒有日曆。我們看月亮圓缺、果子熟了沒有，就知道大約到了哪一個季節。"
+	},
+	{
+		stem: "金錢",
+		extra: [
+			"錢",
+			"買嘢",
+			"購物",
+			"幾多錢"
+		],
+		answer: "我們不用錢。魚多的人分魚給別人，需要樹幹的人就幫對方做事。"
+	},
+	{
+		stem: "攰",
+		extra: [
+			"辛苦",
+			"休息",
+			"累"
+		],
+		answer: "做事做得累，我就坐到樹蔭喝水。太陽太猛的中午，大家都會停一停。"
+	},
+	{
+		stem: "跑步",
+		extra: [
+			"賽跑",
+			"跑得快",
+			"跑"
+		],
+		answer: "孩子常比賽，看誰先跑到河邊的大石。跑的時候要看腳下，免得踩到尖石。"
+	},
+	{
+		stem: "爬樹",
+		extra: ["上樹", "爬樹"],
+		answer: "摘高處的果子就要爬樹。我只爬看過、站得穩的樹，不爬細細的枯枝。"
+	},
+	{
+		stem: "星星",
+		extra: [
+			"夜空",
+			"天星",
+			"星"
+		],
+		answer: "天晴的晚上，天上很多星。我們看着星的方向走路，免得在黑夜裡走丟。"
+	},
+	{
+		stem: "月亮",
+		extra: ["月光", "月"],
+		answer: "月亮圓的晚上很亮，可以在河邊多坐一會。月亮缺的晚上，就要靠火光。"
+	},
+	{
+		stem: "太陽",
+		extra: [
+			"日出",
+			"日落",
+			"日頭"
+		],
+		answer: "太陽出來我就開始做事，太陽落下我就回到火邊。太陽也告訴我哪一邊是暖的。"
+	},
+	{
+		stem: "打雷",
+		extra: [
+			"閃電",
+			"雷",
+			"雷雨"
+		],
+		answer: "打雷時我不站在最高的樹下，也不站在空曠的河岸。我回到山洞，等雷走了再出去。"
+	},
+	{
+		stem: "蚊",
+		extra: [
+			"蟲",
+			"螞蟻",
+			"蚊咬"
+		],
+		answer: "河邊有蚊。我在火邊坐，煙能趕走一些。螞蟻來了，就把食物掛高一點。"
+	},
+	{
+		stem: "工具",
+		extra: [
+			"石器",
+			"刀",
+			"石刀"
+		],
+		answer: "我的工具多是石頭、木棒、藤蔓和獸骨。石頭敲尖了可以切，木棒可以撥草、叉魚。"
+	},
+	{
+		stem: "木材",
+		extra: [
+			"柴",
+			"樹",
+			"斬柴"
+		],
+		answer: "乾樹枝用來燒火，粗樹幹用來做橋和車。我撿地上的枯枝，不會把活樹全都砍光。"
+	},
+	{
+		stem: "保存火",
+		extra: [
+			"火種",
+			"火熄",
+			"點樣留火"
+		],
+		answer: "晚上我用灰輕輕蓋住紅炭，早上撥開，再添乾草，火就又旺起來。火熄了就要重新鑽木。"
+	},
+	{
+		stem: "幾多人",
+		extra: ["營地有幾多人", "有幾多個人"],
+		answer: "我們一群人住在一起，有大人也有小孩。人太多，橋上就不能同時站滿。"
+	},
+	{
+		stem: "領袖",
+		extra: [
+			"首領",
+			"話事人",
+			"老大"
+		],
+		answer: "沒有一個什麼都要聽他的人。找食物、過河、看火，誰熟那件事，大家就先聽誰的。"
+	},
+	{
+		stem: "吵架",
+		extra: [
+			"打架",
+			"爭執",
+			"嘈交"
+		],
+		answer: "意見不同就先停手，坐下來說。我們很少打起來，因為受傷了就沒有人做事。"
+	},
+	{
+		stem: "多謝",
+		extra: [
+			"謝謝",
+			"唔該",
+			"感謝"
+		],
+		answer: "不客氣。你願意來問我，我很高興。還想知道甚麼，可以再說。"
+	},
+	{
+		stem: "對唔住",
+		extra: [
+			"抱歉",
+			"對不起",
+			"sorry"
+		],
+		answer: "沒關係。說一聲對不住，然後改過來，同伴就不會一直生氣。"
+	},
+	{
+		stem: "生日",
+		extra: [
+			"誕生日",
+			"派對",
+			"慶祝生日"
+		],
+		answer: "我沒有生日派對。小孩第一次自己采到果子，或第一次幫着生火，我們就圍着火為他高興。"
+	},
+	{
+		stem: "節日",
+		extra: [
+			"慶祝",
+			"假期",
+			"新年"
+		],
+		answer: "果子熟了、抓到很多魚的晚上，就是我們的節日。大家分食物、唱歌，沒有別的儀式。"
+	},
+	{
+		stem: "祈禱",
+		extra: [
+			"拜神",
+			"神",
+			"上天"
+		],
+		answer: "出發去找食物或過河之前，有人會對河和火安靜地說一句，希望今天平安。我們沒有大廟。"
+	},
+	{
+		stem: "死亡",
+		extra: [
+			"人死咗",
+			"人死了",
+			"走咗"
+		],
+		answer: "人老了或受了很重的傷，有時會離開我們。我們把他放在他喜歡的樹下，以後還會說起他做過的事。"
+	},
+	{
+		stem: "結婚",
+		extra: [
+			"娶",
+			"嫁",
+			"老公",
+			"老婆"
+		],
+		answer: "兩個人願意一直互相照顧，就跟大家說一聲，以後一起住、一起做事。我們沒有華麗的婚禮。"
+	},
+	{
+		stem: "嬰兒",
+		extra: [
+			"生小孩",
+			"BB",
+			"嬰兒"
+		],
+		answer: "營地有嬰兒。大人輪流抱着，讓他靠近火但不要太近，也把食物嚼軟了再餵。"
+	},
+	{
+		stem: "喊",
+		extra: [
+			"哭",
+			"傷心",
+			"想喊"
+		],
+		answer: "傷心可以哭。哭完喝一點水，跟同伴說發生了甚麼。一個人悶着，會更難過。"
+	},
+	{
+		stem: "笑",
+		extra: ["好笑", "開心"],
+		answer: "孩子踢草球跌倒又自己爬起來，我們就笑。笑完還是會扶他一把。"
+	},
+	{
+		stem: "嬲",
+		extra: [
+			"發脾氣",
+			"生氣",
+			"好怒"
+		],
+		answer: "我生氣時會先離開火邊走兩步，等氣平了再說話。對着人亂喊，解決不了事情。"
+	},
+	{
+		stem: "手機",
+		extra: ["電話", "手提電話"],
+		answer: "甚麼是手機？我沒見過。我要找人，就走到他做事的地方，或者大聲叫他的名字。"
+	},
+	{
+		stem: "電腦",
+		extra: ["電腦"],
+		answer: "甚麼是電腦？我沒見過。要記住事情，我就說出來，或在樹上刻一個記號。"
+	},
+	{
+		stem: "電視",
+		extra: ["電視"],
+		answer: "甚麼是電視？我沒見過。晚上我們看的是火、星和別人講的故事。"
+	},
+	{
+		stem: "汽車",
+		extra: ["車仔", "私家車"],
+		answer: "甚麼是汽車？我沒見過。我們搬重物，用的是木做的獨輪車，要靠人來推。"
+	},
+	{
+		stem: "飛機",
+		extra: ["飛機"],
+		answer: "甚麼是飛機？我沒見過會載人的東西在天上飛。我只見過雀鳥。"
+	},
+	{
+		stem: "火車",
+		extra: [
+			"地鐵",
+			"港鐵",
+			"巴士"
+		],
+		answer: "甚麼是火車？我沒見過。我們要去遠一點的地方，就走路，過河就走木橋。"
+	},
+	{
+		stem: "打機",
+		extra: ["遊戲機", "電子遊戲"],
+		answer: "甚麼是打機？我沒玩過。我們的孩子把乾草編成圓球來踢，也在淺水邊比賽跳石。"
+	},
+	{
+		stem: "雪糕",
+		extra: ["冰淇淋"],
+		answer: "甚麼是雪糕？我沒吃過那麼冰的東西。天熱我吃的是多汁的野果。"
+	},
+	{
+		stem: "學校巴士",
+		extra: ["校車"],
+		answer: "甚麼是學校巴士？我們沒有學校，小孩就跟着大人在營地裡學。"
+	},
+	{
+		stem: "平板",
+		extra: [
+			"iPad",
+			"ipad",
+			"電腦板"
+		],
+		answer: "甚麼是平板？我沒見過會發光的板。我手上最多是木板、石片和烤魚。"
+	},
+	{
+		stem: "上網",
+		extra: [
+			"網絡",
+			"YouTube",
+			"youtube",
+			"影片"
+		],
+		answer: "甚麼是上網？我沒聽過。我要知道遠方的事，只能等去過那裡的人回來親口說。"
+	},
+	{
+		stem: "的士",
+		extra: ["taxi", "計程車"],
+		answer: "甚麼是的士？我沒坐過。我去河邊、去林邊，都是用自己的腳走。"
+	},
+	{
+		stem: "電燈",
+		extra: [
+			"電",
+			"燈",
+			"開燈"
+		],
+		answer: "我沒有電燈。晚上靠火光。火要有人看着，太旺會燒到草，太弱又會黑。"
+	},
+	{
+		stem: "廁紙",
+		extra: ["紙", "紙巾"],
+		answer: "我沒有紙。方便之後用樹葉或細沙清理，再到河邊把手洗乾淨。"
+	},
+	{
+		stem: "肥皂",
+		extra: ["沐浴露", "洗髮水"],
+		answer: "我沒有肥皂。洗澡和洗手都用河水，有時加一把細沙，把泥搓掉。"
+	},
+	{
+		stem: "牙刷",
+		extra: ["牙膏"],
+		answer: "我沒有牙刷和牙膏。吃完東西就用水漱口，再用細軟的枝條輕輕刮牙齒。"
+	},
+	{
+		stem: "鏡子",
+		extra: ["鏡", "自拍"],
+		answer: "我沒有鏡子。要看自己，就在平靜的河水裡看一眼，或者問同伴我的臉上有沒有灰。"
+	},
+	{
+		stem: "顏色",
+		extra: ["顏料", "彩色"],
+		answer: "我看見泥土是褐的，葉子是綠的，火是紅的，河水有時發亮。我們用有顏色的泥和果子在石上畫。"
+	},
+	{
+		stem: "做咩工作",
+		extra: [
+			"你做咩工作",
+			"工作",
+			"職業"
+		],
+		who: "fire",
+		answer: "我的工作是生火。火用來取暖、煮食和照明，也讓野獸不敢靠近洞口。"
+	},
+	{
+		stem: "做咩工作",
+		extra: [
+			"你做咩工作",
+			"工作",
+			"職業"
+		],
+		who: "wheel",
+		answer: "我的工作是做獨輪車，把抱不起的大石和重物推走。"
+	},
+	{
+		stem: "做咩工作",
+		extra: [
+			"你做咩工作",
+			"工作",
+			"職業"
+		],
+		who: "bridge",
+		answer: "我的工作是用樹幹搭木橋，讓大家不用游過急流也能到對岸。"
+	},
+	{
+		stem: "夜晚做咩",
+		extra: ["晚上做甚麼", "夜里做咩"],
+		who: "fire",
+		answer: "晚上我看着火，添木柴，等紅炭穩定了才睡。火不能沒有人管。"
+	},
+	{
+		stem: "夜晚做咩",
+		extra: ["晚上做甚麼", "夜里做咩"],
+		who: "wheel",
+		answer: "晚上我不推重車。我坐在火邊，看看明天的把手還牢不牢。"
+	},
+	{
+		stem: "夜晚做咩",
+		extra: ["晚上做甚麼", "夜里做咩"],
+		who: "bridge",
+		answer: "晚上我太暗就不走橋。我在火邊聽河水的聲音，天亮再去檢查樹幹。"
+	},
+	{
+		stem: "點學會",
+		extra: [
+			"你點學會",
+			"邊個教你",
+			"點學"
+		],
+		answer: "沒有人一次教完。我先看，再試，失敗了就改。同伴也會提醒我危險的地方。"
+	},
+	{
+		stem: "失敗",
+		extra: [
+			"試錯",
+			"做錯",
+			"失敗"
+		],
+		answer: "我失敗過很多次。火會熄，車會歪，橋會太細。失敗了就記住為甚麼，下一次改一點。"
+	},
+	{
+		stem: "合作",
+		extra: [
+			"一齊做",
+			"幫手",
+			"幫忙"
+		],
+		answer: "一個人搬不了大樹，也顧不了整晚的火。我們要一起做，才過得了河、吃得上飯。"
+	},
+	{
+		stem: "教細路",
+		extra: ["教小孩", "教小朋友"],
+		answer: "我教小孩先看，再在安全的地方試。例如看火可以，亂吹大火就不可以。"
+	},
+	{
+		stem: "看守",
+		extra: [
+			"值班",
+			"守夜",
+			"守營地"
+		],
+		answer: "晚上總有人醒着看火、聽四周。輪到我，我就坐在洞口，不讓火熄掉。"
+	},
+	{
+		stem: "朋友玩咩",
+		extra: ["同伴玩", "一齊玩"],
+		answer: "我們踢草球、跳石、比賽誰先聽見鳥叫。玩完還是要幫忙找食物。"
+	},
+	{
+		stem: "名字點嚟",
+		extra: [
+			"點解叫這名",
+			"名字點來",
+			"花名"
+		],
+		who: "fire",
+		answer: "大家叫我阿火，因為我整天跟火在一起。你要問生火，就來找我。"
+	},
+	{
+		stem: "名字點嚟",
+		extra: [
+			"點解叫這名",
+			"名字點來",
+			"花名"
+		],
+		who: "wheel",
+		answer: "大家叫我阿輪，因為我做了獨輪車。大石抱不動的時候，他們就來找我。"
+	},
+	{
+		stem: "名字點嚟",
+		extra: [
+			"點解叫這名",
+			"名字點來",
+			"花名"
+		],
+		who: "bridge",
+		answer: "大家叫我阿橋，因為過河的木橋是我搭的。你要過河，就來問我。"
+	},
+	{
+		stem: "鍾意咩",
+		extra: [
+			"喜歡甚麼",
+			"最喜歡",
+			"鍾意做咩"
+		],
+		who: "fire",
+		answer: "我最喜歡火變得又穩又亮的那一刻。大家可以取暖，也可以開始烤魚。"
+	},
+	{
+		stem: "鍾意咩",
+		extra: [
+			"喜歡甚麼",
+			"最喜歡",
+			"鍾意做咩"
+		],
+		who: "wheel",
+		answer: "我最喜歡大石終於跟着輪子走的那一下。之前要好幾個人才抱得動。"
+	},
+	{
+		stem: "鍾意咩",
+		extra: [
+			"喜歡甚麼",
+			"最喜歡",
+			"鍾意做咩"
+		],
+		who: "bridge",
+		answer: "我最喜歡站在橋中間，看見兩邊的人都能走過來，又不用跳進急流。"
+	},
+	{
+		stem: "驚高",
+		extra: ["怕高", "恐高"],
+		answer: "我不大喜歡站在不穩的高處。過河走橋可以，但橋太窄、人太多，我就要大家退後。"
+	},
+	{
+		stem: "痛",
+		extra: ["好痛", "痛"],
+		answer: "如果痛，就停下來，告訴旁邊的人。硬撐着做事，容易傷得更重。"
+	},
+	{
+		stem: "流血",
+		extra: ["鼻血"],
+		answer: "流一點血不要慌。坐下，用乾淨的軟皮壓住，等它慢下來，再去洗乾淨。"
+	},
+	{
+		stem: "肚痛",
+		extra: ["腹瀉", "肚屙"],
+		answer: "肚痛就不要再吃不認識的果子，喝一點燒開的水，躺下休息。還痛就告訴大人。"
+	},
+	{
+		stem: "冷熱",
+		extra: ["體溫"],
+		answer: "我用手摸自己和同伴的額頭。太燙就休息、喝水，不要再去晒太陽或離火太近。"
+	},
+	{
+		stem: "剪頭髮",
+		extra: ["理髮"],
+		answer: "頭髮太長礙事，長者就用利石慢慢割短。我們沒有剪刀。"
+	},
+	{
+		stem: "指甲",
+		extra: ["指甲長"],
+		answer: "指甲長了會藏泥。我在石頭上小心地磨短，不要磨到肉。"
+	},
+	{
+		stem: "衣服髒",
+		extra: ["洗衣", "洗衫"],
+		answer: "獸皮和草衣髒了，我就拿到河裡拍打，晒在樹枝上。沒有洗衣粉。"
+	},
+	{
+		stem: "下雨冇火",
+		extra: ["火被雨淋"],
+		answer: "火被雨淋熄，就要到乾燥的洞裡重新鑽木。所以我平時把乾草藏在洞的最裡面。"
+	},
+	{
+		stem: "獨居",
+		extra: ["一個人住", "寂寞"],
+		answer: "我很少一個人長住。一個人要顧火、找食物又看孩子，太危險。我們住在一起。"
+	},
+	{
+		stem: "夢想",
+		extra: [
+			"想做咩",
+			"願望",
+			"希望"
+		],
+		answer: "我希望今晚的火不熄，明天河裡有魚，過河的人都能平安走到對岸。"
+	},
+	{
+		stem: "勇敢",
+		extra: ["勇唔勇敢", "膽小"],
+		answer: "勇敢不是亂衝。看清楚危險，還願意幫同伴，我覺得那才是勇敢。"
+	},
+	{
+		stem: "分享",
+		extra: ["分食物", "點解要分"],
+		answer: "食物分給大家，明天別人才會在你肚餓時也分給你。一個人藏起來，營地就散了。"
+	},
+	{
+		stem: "規矩",
+		extra: ["規則", "唔准"],
+		answer: "我們的規矩不多：不要弄熄別人的火，不要一次站滿橋，不要吃不認識的果子，不要對人亂喊。"
+	},
+	{
+		stem: "說謊",
+		extra: ["講大話", "呃人"],
+		answer: "說謊會讓同伴走錯路，例如說橋很穩但其實會斷。我們寧願早點說真話。"
+	},
+	{
+		stem: "幫忙",
+		extra: ["點幫你", "可唔可以幫"],
+		answer: "你可以幫我看着火不要太旺，或者問我一個清楚的問題。問清楚，就是在幫我把事情說明白。"
+	},
+	{
+		stem: "再见",
+		extra: ["拜拜", "下次見"],
+		answer: "再見。你下次來，可以再問我今天做的事。"
+	},
+	{
+		stem: "早晨",
+		extra: [
+			"早安",
+			"早上好",
+			"早"
+		],
+		answer: "早晨。我今天也在營地做事。你吃過東西了嗎？"
+	},
+	{
+		stem: "午安",
+		extra: ["下午好"],
+		answer: "午安。太陽還高，我還沒做完今天的事。你吃過了嗎？"
+	},
+	{
+		stem: "晚安",
+		extra: ["早唞", "早休"],
+		answer: "晚安。我要去看火，然後睡覺。你也早點休息。"
+	}
+];
+function expand(topic) {
+	return [...FRAMES.map((frame) => frame(topic.stem)), ...topic.extra ?? []].map((q) => ({
+		q,
+		answer: topic.answer,
+		who: topic.who
+	}));
+}
+var CAMP_ENTRIES = TOPICS.flatMap(expand);
+CAMP_ENTRIES.length;
+function fold(value) {
+	return value.toLowerCase().replace(/[\s\u200b，。！？、,.!?:：；;「」"'‘’]/g, "");
+}
+function matchCampLife(id, question, person) {
+	const text = fold(question);
+	if (text.length < 2) return null;
+	let best = null;
+	for (const entry of CAMP_ENTRIES) {
+		if (entry.who && entry.who !== id) continue;
+		const key = fold(entry.q);
+		if (key.length < 2) continue;
+		let score = 0;
+		if (text.includes(key)) score = key.length + (entry.who === id ? 20 : 0);
+		if (score > 0 && (!best || score > best.score)) best = {
+			score,
+			answer: entry.answer
+		};
+	}
+	if (!best) return null;
+	return best.answer.replaceAll("{name}", person.name).replaceAll("{method}", person.method).replaceAll("{problem}", person.problem);
+}
+function readChat(input) {
+	if (!input || typeof input !== "object") throw new Error("問題格式不對");
+	const data = input;
+	if (typeof data.characterId !== "string" || !isCharacterId(data.characterId)) throw new Error("找不到這位古人");
+	if (typeof data.studentId !== "string" || !/^[0-9a-f-]{36}$/i.test(data.studentId)) throw new Error("請先登入");
+	if (!Array.isArray(data.messages) || data.messages.length === 0 || data.messages.length > 16) throw new Error("請把問題寫短一點");
+	const messages = data.messages.map((item) => {
+		if (!item || typeof item !== "object") throw new Error("問題格式不對");
+		const turn = item;
+		if (turn.role !== "user" && turn.role !== "assistant") throw new Error("問題格式不對");
+		if (typeof turn.content !== "string") throw new Error("問題格式不對");
+		const content = turn.content.replace(/\s+/g, " ").trim().slice(0, 400);
+		if (!content) throw new Error("請寫下你的問題");
+		return {
+			role: turn.role === "assistant" ? "assistant" : "user",
+			content
+		};
+	});
+	if (messages[messages.length - 1]?.role !== "user") throw new Error("請先寫下你的問題");
+	return {
+		characterId: data.characterId,
+		studentId: data.studentId,
+		messages
+	};
+}
+function line(reply, lens = "經驗", think = "", speak) {
+	return {
+		reply,
+		lens,
+		think,
+		speak: speak ?? toColloquial(reply)
+	};
+}
+var HOW = {
+	fire: "我把較軟的乾木按在地上，用較硬的木棒在上面快速旋轉，冒煙後蓋上乾草，再輕輕吹。我也試過用兩塊石頭相擊迸出火花。",
+	wheel: "我看見圓木放在重物下面會滾，於是做了一輛獨輪車：一隻木輪、一個車斗、兩條長把手。石頭蓋在靠近輪的車斗裡，握住把手就能推動。",
+	bridge: "我看見倒下的大樹連着兩岸，於是砍下較粗的樹幹，並排搭成一道木橋。人走上去時，橋中間會微微向下彎。不要一次站太多人。"
+};
+var HOW_SAY = {
+	fire: "我將軟啲嘅乾木撳喺地下，用硬啲嘅木棒喺上面快快咁轉。一見到冒煙，就蓋上乾草，再輕輕吹。我都試過用兩塊石相撞，迸出火花添。",
+	wheel: "我見到圓木放喺重嘢下面會滾，於是整咗架獨輪車：一隻木輪、一個車斗、兩條長把手。石放近個輪，握住把手就推得郁。",
+	bridge: "我見到棵大樹倒低，連住兩邊岸，於是斬咗粗啲嘅樹幹，並排搭成條木橋。人行上去，中間會微微向下彎。唔好一次過站太多人呀。"
+};
+function ownTopic(id, text) {
+	if (id === "fire") return /生火|鑽木|取火|摩擦力|照明|取暖|用火/.test(text);
+	if (id === "wheel") return /獨輪|推車|大石|槓桿|搬重|搬運|輪子/.test(text);
+	return /木橋|搭橋|過河|壓縮|拉伸/.test(text);
+}
+function localReply(id, question) {
+	const person = getCharacter(id);
+	const text = question.replace(/\s+/g, "");
+	const others = CHARACTERS.filter((item) => item.id !== id);
+	if (/^(你好|您好|哈囉|嗨|hi|hello|早晨|早安|早上好|午安)/i.test(text)) {
+		if (/早晨|早安/.test(text)) return line(`早晨。我是${person.name}，今天也在營地做事。你吃過東西了嗎？`, "經驗", "", `早晨呀。我係${person.name}，今日都喺營地做事。你食咗嘢未呀？`);
+		return line(`你好，我是${person.name}。很高興你來找我說話。你今天好嗎？`, "經驗", "", `你好呀，我係${person.name}。好開心你嚟搵我傾偈。你今日好呀？`);
+	}
+	if (/再見|拜拜/.test(text)) return line(`再見。下次可以再問我${person.method}。`, "經驗", "", `拜拜啦。下次可以再問我${person.method}呀。`);
+	if (/食咗|食左|食過|吃了|吃過|吃飯|食飯|食未|飯未|肚餓|早餐|午餐/.test(text)) return line("我吃過了。天亮後烤了一條河魚，還吃了幾顆野果。你吃過了嗎？", "經驗", "你吃的是甚麼？", "我食咗啦。天光之後烤咗一條河魚，仲食咗幾顆野果。你食咗未呀？");
+	if (/你是誰|你係邊|叫甚麼|叫咩名/.test(text)) return line(`我是${person.name}，住在河邊的營地。我負責${person.method}。`, "經驗", "", `我係${person.name}呀，住喺河邊嘅營地。我負責${person.method}嘅。`);
+	if (/分別|科學是甚麼|科技是甚麼|甚麼是科學|甚麼是科技|係咪一樣|是不是一樣/.test(text)) return line(`科學是解釋為甚麼行得通的知識；科技是解決生活問題的方法和工具。我用${person.method}解決${person.problem}，那是科技。後來的人才說明${person.science}，那是科學。`, "互相推動", "你覺得哪一樣先出現？", `科學就係解釋點解行得通嘅知識；科技就係解決生活問題嘅方法同工具呀。我用${person.method}去解決${person.problem}，呢個係科技。後尾啲人先講明${person.science}，呢個先係科學啦。`);
+	if (/促進科技|科學促進|科學發現/.test(text)) return line(person.scienceToTech, "互相推動");
+	if (/推動科學|科技推動|科技發展/.test(text)) return line(person.techToScience, "互相推動");
+	for (const other of others) if (ownTopic(other.id, text)) return line(`這件事是${other.name}在做的。他用${other.method}解決${other.problem}。你去問${other.name}，他會講得更清楚。`, "科技");
+	if (ownTopic(id, text) || /科學|科技|原理|發明/.test(text)) {
+		if (/當時|知不知道|知唔知|知道嗎|知道嗎/.test(text)) return line(person.knew, "經驗");
+		if (/模仿|大自然|觀察/.test(text)) return line(person.nature, "經驗");
+		if (/科學|原理|摩擦力|槓桿|壓縮|拉伸|為甚麼行|點解會|承受|彎/.test(text)) return line(`${person.scienceKid}${person.knew}`, "科學", "你試過類似的事嗎？");
+		if (/為甚麼要|點解要|有甚麼用|用來|為甚麼/.test(text)) return line(`因為我們要解決${person.problem}。我用的方法是${person.method}。`, "科技");
+		return line(HOW[id], "科技", "你還想問哪一部分？", HOW_SAY[id]);
+	}
+	const life = matchCampLife(id, text, person);
+	if (life) return line(life);
+	return line(`這件事我沒有經歷過，課文裡也沒有寫。你可以問我${person.method}，或者問科學和科技有甚麼分別。`);
+}
+var askAncient_createServerFn_handler = createServerRpc({
+	id: "9f1adc45fff0dccd56d7ad46a8d2dc6fe129fbac034eb0f1b077032f2b05e1ac",
+	name: "askAncient",
+	filename: "src/lib/ask.functions.ts"
+}, (opts) => askAncient.__executeServer(opts));
+var askAncient = createServerFn({ method: "POST" }).validator(readChat).handler(askAncient_createServerFn_handler, async ({ data }) => {
+	const question = data.messages[data.messages.length - 1]?.content ?? "";
+	const keep = async (reply) => {
+		try {
+			await recordAsk({
+				studentId: data.studentId,
+				characterId: data.characterId,
+				question,
+				answer: reply.reply
+			});
+		} catch {}
+		let audio = "";
+		try {
+			const { speakCastVoice } = await import("./eleven-voice.server-DHm1gHT3.mjs");
+			audio = await speakCastVoice(data.characterId, reply.speak);
+		} catch {
+			audio = "";
+		}
+		return {
+			...reply,
+			audio
+		};
+	};
+	const pack = (answer, flags) => keep({
+		ok: true,
+		...answer,
+		speak: answer.speak || answer.reply,
+		...flags
+	});
+	const warnings = await warningCount(data.studentId);
+	if (warnings >= 3) {
+		const locked = lockedSpeech();
+		return pack({
+			reply: locked.reply,
+			lens: "經驗",
+			think: "",
+			speak: locked.speak
+		}, {
+			warning: true,
+			locked: true,
+			warnings
+		});
+	}
+	if (isMisconduct(question)) {
+		const count = await addWarning(data.studentId);
+		const warning = warningSpeech(count);
+		return pack({
+			...line(warning.reply),
+			speak: warning.speak
+		}, {
+			warning: true,
+			locked: count >= 3,
+			warnings: count
+		});
+	}
+	if (isDistress(question)) {
+		const care = careSpeech();
+		return pack({
+			...line(care.reply),
+			speak: care.speak
+		}, {
+			warning: false,
+			locked: false,
+			warnings
+		});
+	}
+	return pack(localReply(data.characterId, question), {
+		warning: false,
+		locked: false,
+		warnings
+	});
+});
+//#endregion
+export { askAncient_createServerFn_handler };

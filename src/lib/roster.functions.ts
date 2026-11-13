@@ -1,26 +1,40 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "@/lib/db";
-import { getCharacter, isCharacterId } from "@/lib/lesson";
 import { isMisconduct } from "@/lib/conduct";
-
-const TEACHER_CODE = process.env.TEACHER_CODE?.trim() || "mosllps123456";
 
 function clean(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
   return value.replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+function normalizeUsername(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .toUpperCase();
+}
+
+const CLASSES = ["5A", "5B", "5C", "5D", "5E"] as const;
+
+function canonClass(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .toUpperCase();
+}
+
 function readStudent(input: unknown): { name: string; className: string; studentNo: string } {
   if (!input || typeof input !== "object") throw new Error("請填寫資料");
   const data = input as { name?: unknown; className?: unknown; studentNo?: unknown };
   const name = clean(data.name, 20);
-  const className = clean(data.className, 12);
-  const studentNo = clean(data.studentNo, 6);
+  const className = canonClass(clean(data.className, 12));
+  const rawNo = clean(data.studentNo, 6).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
+  const studentNo = Number(rawNo);
   if (name.length < 1) throw new Error("請寫下姓名");
-  if (className.length < 1) throw new Error("請寫下班別");
-  if (!/^\d{1,6}$/.test(studentNo)) throw new Error("學號請用數字");
-  return { name, className, studentNo };
+  if (!CLASSES.includes(className as (typeof CLASSES)[number])) throw new Error("班別只可以是 5A、5B、5C、5D 或 5E");
+  if (!/^\d{1,2}$/.test(rawNo) || studentNo < 1 || studentNo > 35) throw new Error("學號只可以是 1 至 35");
+  return { name, className, studentNo: String(studentNo) };
 }
 
 export const joinClass = createServerFn({ method: "POST" })
@@ -29,67 +43,23 @@ export const joinClass = createServerFn({ method: "POST" })
     if (isMisconduct(data.name) || isMisconduct(data.className)) {
       return { ok: false as const, error: "請用有禮的姓名和班別。" };
     }
-    const sql = await getSql();
-    const found = await sql<{ id: string; warnings: number }>`
-      select id, warnings from students where class_name = ${data.className} and student_no = ${data.studentNo}
-    `;
-    if (found[0]) {
-      await sql`update students set name = ${data.name} where id = ${found[0].id}`;
-      const warnings = Number(found[0].warnings) || 0;
-      return { ok: true as const, studentId: found[0].id, warnings, locked: warnings >= 3 };
-    }
-    const id = crypto.randomUUID();
-    await sql`
-      insert into students (id, name, class_name, student_no)
-      values (${id}, ${data.name}, ${data.className}, ${data.studentNo})
-    `;
-    return { ok: true as const, studentId: id, warnings: 0, locked: false };
+    const { joinOnce } = await import("@/lib/roster.server");
+    return joinOnce(data);
   });
 
-export async function addWarning(studentId: string): Promise<number> {
-  const sql = await getSql();
-  const rows = await sql<{ warnings: number }>`
-    update students set warnings = warnings + 1
-    where id = ${studentId} and warnings < 3
-    returning warnings
-  `;
-  if (rows[0]) return Number(rows[0].warnings) || 0;
-  const current = await sql<{ warnings: number }>`select warnings from students where id = ${studentId}`;
-  return Number(current[0]?.warnings) || 0;
-}
-
-export async function warningCount(studentId: string): Promise<number> {
-  const sql = await getSql();
-  const rows = await sql<{ warnings: number }>`select warnings from students where id = ${studentId}`;
-  return Number(rows[0]?.warnings) || 0;
-}
-
-export async function recordAsk(input: {
-  studentId: string;
-  characterId: string;
-  question: string;
-  answer: string;
-}): Promise<void> {
-  if (!isCharacterId(input.characterId)) return;
-  const sql = await getSql();
-  const found = await sql<{ id: string }>`select id from students where id = ${input.studentId}`;
-  if (!found[0]) return;
-  await sql`
-    insert into asks (id, student_id, character_id, question, answer)
-    values (${crypto.randomUUID()}, ${input.studentId}, ${input.characterId}, ${input.question.slice(0, 400)}, ${input.answer.slice(0, 800)})
-  `;
-}
-
-function teacherToken(): string {
-  return createHmac("sha256", TEACHER_CODE).update("roster-v1").digest("hex");
-}
-
-function same(left: string, right: string): boolean {
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
+export const loginStudent = createServerFn({ method: "POST" })
+  .validator((input: unknown) => {
+    if (!input || typeof input !== "object") throw new Error("請輸入帳號和密碼");
+    const data = input as { username?: unknown; password?: unknown };
+    const username = normalizeUsername(clean(data.username, 12));
+    const password = clean(data.password, 20);
+    if (!username || !password) throw new Error("請輸入帳號和密碼");
+    return { username, password };
+  })
+  .handler(async ({ data }) => {
+    const { loginOnce } = await import("@/lib/roster.server");
+    return loginOnce(data);
+  });
 
 export const unlockTeacher = createServerFn({ method: "POST" })
   .validator((input: unknown) => {
@@ -99,8 +69,9 @@ export const unlockTeacher = createServerFn({ method: "POST" })
     return { code };
   })
   .handler(async ({ data }) => {
-    if (!same(data.code, TEACHER_CODE)) return { ok: false as const, error: "密碼不對" };
-    return { ok: true as const, token: teacherToken() };
+    const { passwordOk, issueTeacherToken } = await import("@/lib/roster.server");
+    if (!passwordOk(data.code)) return { ok: false as const, error: "密碼不對" };
+    return { ok: true as const, token: issueTeacherToken() };
   });
 
 export type BoardAsk = {
@@ -128,48 +99,40 @@ export const loadBoard = createServerFn({ method: "POST" })
     return { token };
   })
   .handler(async ({ data }) => {
-    if (!same(data.token, teacherToken())) return { ok: false as const, error: "請再輸入密碼" };
-    const sql = await getSql();
-    const rows = await sql<{
-      id: string;
-      name: string;
-      class_name: string;
-      student_no: string;
-      warnings: number;
-      character_id: string | null;
-      question: string | null;
-      answer: string | null;
-      at: string | null;
-    }>`
-      select s.id, s.name, s.class_name, s.student_no, s.warnings,
-             a.character_id, a.question, a.answer, a.created_at::text as at
-      from students s
-      left join asks a on a.student_id = s.id
-      order by s.class_name, s.student_no, a.created_at desc nulls last
-    `;
-    const students: BoardStudent[] = [];
-    for (const row of rows) {
-      let student = students.find((item) => item.id === row.id);
-      if (!student) {
-        student = {
-          id: row.id,
-          name: row.name,
-          className: row.class_name,
-          studentNo: row.student_no,
-          warnings: Number(row.warnings) || 0,
-          locked: (Number(row.warnings) || 0) >= 3,
-          asks: [],
-        };
-        students.push(student);
-      }
-      if (row.question && row.answer && row.character_id && isCharacterId(row.character_id)) {
-        student.asks.push({
-          character: getCharacter(row.character_id).name,
-          question: row.question,
-          answer: row.answer,
-          at: row.at ?? "",
-        });
-      }
-    }
-    return { ok: true as const, students };
+    const { teacherOk, readBoard } = await import("@/lib/roster.server");
+    if (!teacherOk(data.token)) return { ok: false as const, error: "請再輸入密碼" };
+    const board = await readBoard();
+    return { ok: true as const, students: board.students };
+  });
+
+export const clearBoard = createServerFn({ method: "POST" })
+  .validator((input: unknown) => {
+    if (!input || typeof input !== "object") throw new Error("請先解鎖");
+    const token = clean((input as { token?: unknown }).token, 80);
+    if (!token) throw new Error("請先解鎖");
+    return { token };
+  })
+  .handler(async ({ data }) => {
+    const { teacherOk, wipeBoard } = await import("@/lib/roster.server");
+    if (!teacherOk(data.token)) return { ok: false as const, error: "請再輸入密碼" };
+    await wipeBoard();
+    return { ok: true as const };
+  });
+
+export const releaseStudent = createServerFn({ method: "POST" })
+  .validator((input: unknown) => {
+    if (!input || typeof input !== "object") throw new Error("請先解鎖");
+    const data = input as { token?: unknown; studentId?: unknown };
+    const token = clean(data.token, 80);
+    const studentId = clean(data.studentId, 40);
+    if (!token) throw new Error("請先解鎖");
+    if (!/^[0-9a-f-]{36}$/i.test(studentId)) throw new Error("找不到這位同學");
+    return { token, studentId };
+  })
+  .handler(async ({ data }) => {
+    const { teacherOk, releaseStudent: releaseOne } = await import("@/lib/roster.server");
+    if (!teacherOk(data.token)) return { ok: false as const, error: "請再輸入密碼" };
+    const released = await releaseOne(data.studentId);
+    if (!released) return { ok: false as const, error: "這位同學未被停止使用" };
+    return { ok: true as const };
   });

@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, RotateCcw, Send } from "lucide-react";
 import { askAncient } from "@/lib/ask.functions";
+import { greetingSpeech } from "@/lib/speak-yue";
+import { speakAncient } from "@/lib/voice.functions";
 import { joinClass } from "@/lib/roster.functions";
 import {
   CHARACTERS,
@@ -24,10 +26,44 @@ type Msg = {
 };
 
 type Threads = Record<CharacterId, Msg[]>;
+type FilmId = "idle" | CharacterId;
 
 const STORAGE_KEY = "ancient-camp-v1";
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+function voiceLabel(voice: SpeechSynthesisVoice): string {
+  return `${voice.name} ${voice.voiceURI}`.toLowerCase();
+}
+
+function isCantoneseVoice(voice: SpeechSynthesisVoice): boolean {
+  const lang = voice.lang.toLowerCase().replaceAll("_", "-");
+  const label = voiceLabel(voice);
+  return lang === "zh-hk" || lang.endsWith("-hk") || lang.startsWith("yue") || /sin-?ji|善怡|cantonese|粵語|粤语/.test(label);
+}
+
+function soundsMale(voice: SpeechSynthesisVoice): boolean {
+  return /eddy|艾迪|grandpa|爺爺|rocko|daniel|alex|fred|male|\bman\b|boy|男/.test(voiceLabel(voice));
+}
+
+function cantoneseVoice(id: CharacterId): SpeechSynthesisVoice | null {
+  const voices = speechSynthesis.getVoices().filter(isCantoneseVoice);
+  if (!voices.length) return null;
+  const female = voices.find((voice) => /善怡|sin-?ji|flo|sandy|珊迪/.test(voiceLabel(voice)) && !soundsMale(voice)) ?? null;
+  if (id === "fire") return female;
+  return voices.find((voice) => soundsMale(voice)) ?? null;
+}
+
+function allowDeviceVoice(id: CharacterId): boolean {
+  if (typeof speechSynthesis === "undefined") return false;
+  return Boolean(cantoneseVoice(id));
+}
+
+async function waitMs(ms: number): Promise<string> {
+  return new Promise((resolve) => window.setTimeout(() => resolve(""), ms));
+}
+
+function idWait(id: CharacterId): number {
+  return allowDeviceVoice(id) ? 250 : 7000;
+}
 
 function greeting(person: Character): Msg {
   return {
@@ -52,59 +88,54 @@ function lensClass(lens: Lens): string {
   return "bg-paper-2 text-ink";
 }
 
-const FILMS = {
+const FILMS: Record<FilmId, { src: string; poster: string }> = {
   idle: { src: "/ancients/scene-idle.mp4?v=15", poster: "/ancients/poster-idle.jpg?v=15" },
   fire: { src: "/ancients/scene-fire.mp4?v=15", poster: "/ancients/poster-fire.jpg?v=15" },
   wheel: { src: "/ancients/scene-wheel.mp4?v=15", poster: "/ancients/poster-wheel.jpg?v=15" },
   bridge: { src: "/ancients/scene-bridge.mp4?v=15", poster: "/ancients/poster-bridge.jpg?v=15" },
-} as const;
+};
 
-type FilmId = keyof typeof FILMS;
+function filmBuffered(el: HTMLVideoElement): boolean {
+  if (el.error || !Number.isFinite(el.duration) || el.duration <= 0) return false;
+  if (el.readyState >= 4) return true;
+  if (!el.buffered.length) return false;
+  return el.buffered.end(el.buffered.length - 1) >= el.duration - 0.3;
+}
 
-function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) {
+function CampFilm({ active, onReady, filmsRef }: { active: FilmId; onReady: () => void; filmsRef: { current: Partial<Record<FilmId, HTMLVideoElement | null>> } }) {
   const refs = useRef<Partial<Record<FilmId, HTMLVideoElement | null>>>({});
-  const seen = useRef(new Set<FilmId>());
-  const done = useRef(false);
   const onReadyRef = useRef(onReady);
+  const reported = useRef(false);
   onReadyRef.current = onReady;
 
-  function note(id: FilmId) {
-    seen.current.add(id);
-    if (!done.current && seen.current.size === Object.keys(FILMS).length) {
-      done.current = true;
-      onReadyRef.current();
-    }
-  }
-
   useEffect(() => {
-    for (const id of Object.keys(FILMS) as FilmId[]) {
-      const el = refs.current[id];
-      if (el && el.readyState >= 3) note(id);
-    }
-    const timer = window.setTimeout(() => {
-      if (!done.current) {
-        done.current = true;
-        onReadyRef.current();
+    const tick = () => {
+      const ids = Object.keys(FILMS) as FilmId[];
+      for (const id of ids) {
+        const el = refs.current[id];
+        if (!el) continue;
+        el.muted = true;
+        if (el.paused) void el.play().catch(() => undefined);
       }
-    }, 12000);
-    return () => window.clearTimeout(timer);
-  }, []);
+      if (reported.current) return;
+      if (!ids.every((id) => {
+        const el = refs.current[id];
+        return Boolean(el && filmBuffered(el));
+      })) return;
+      reported.current = true;
+      onReadyRef.current();
+    };
+    const timer = window.setInterval(tick, 250);
+    tick();
+    return () => window.clearInterval(timer);
+  }, [active]);
 
   useEffect(() => {
-    for (const id of Object.keys(FILMS) as FilmId[]) {
-      const el = refs.current[id];
-      if (!el || id === active) continue;
-      el.pause();
-    }
     const el = refs.current[active];
     if (!el) return;
-    const kick = () => {
-      if (el.ended) el.currentTime = 0;
-      if (el.paused) void el.play().catch(() => {});
-    };
-    el.addEventListener("ended", kick);
-    kick();
-    return () => el.removeEventListener("ended", kick);
+    el.muted = true;
+    if (el.ended) el.currentTime = 0;
+    if (el.paused) void el.play().catch(() => undefined);
   }, [active]);
 
   return (
@@ -114,7 +145,6 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
           key={`${id}-still`}
           src={FILMS[id].poster}
           alt=""
-          loading="eager"
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${id === active ? "z-[1]" : "hidden"}`}
         />
       ))}
@@ -124,6 +154,7 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
           data-film={id}
           ref={(node) => {
             refs.current[id] = node;
+            filmsRef.current[id] = node;
           }}
           src={FILMS[id].src}
           poster={FILMS[id].poster}
@@ -132,8 +163,6 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
           playsInline
           autoPlay
           preload="auto"
-          onCanPlayThrough={() => note(id)}
-          onError={() => note(id)}
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${id === active ? "z-[2] opacity-100" : "z-0 opacity-0"}`}
           aria-label={id === active ? "河邊營地：阿火在生火，阿輪推大石，阿橋正走過木橋" : undefined}
         />
@@ -144,10 +173,12 @@ function CampFilm({ active, onReady }: { active: FilmId; onReady: () => void }) 
 
 export function CampApp() {
   const ask = useServerFn(askAncient);
+  const voice = useServerFn(speakAncient);
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [sceneReady, setSceneReady] = useState(false);
   const [banned, setBanned] = useState(false);
   const [characterId, setCharacterId] = useState<CharacterId | null>(null);
-  const [filmReady, setFilmReady] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
   const [threads, setThreads] = useState<Threads>(freshThreads);
   const [draft, setDraft] = useState("");
   const [hint, setHint] = useState("");
@@ -157,13 +188,14 @@ export function CampApp() {
   const [speakError, setSpeakError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const speakGen = useRef(0);
+  const speakTimer = useRef(0);
+  const audioCtx = useRef<AudioContext | null>(null);
+  const stopAudio = useRef<(() => void) | null>(null);
+  const filmRefs = useRef<Partial<Record<FilmId, HTMLVideoElement | null>>>({});
   const characterRef = useRef<CharacterId | null>(null);
   const chatGen = useRef<Record<CharacterId, number>>({ fire: 0, wheel: 0, bridge: 0 });
   characterRef.current = characterId;
-
-  const booted = filmReady;
   const person = characterId ? getCharacter(characterId) : null;
   const messages = characterId ? threads[characterId] : [];
   const waiting = Boolean(characterId) && pendingId === characterId;
@@ -172,7 +204,7 @@ export function CampApp() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { characterId?: string; threads?: Threads };
+        const saved = JSON.parse(raw) as { characterId?: string; threads?: Partial<Record<CharacterId, Msg[]>> };
         if (saved.characterId && isCharacterId(saved.characterId) && saved.threads) {
           const next = freshThreads();
           for (const item of CHARACTERS) {
@@ -194,39 +226,211 @@ export function CampApp() {
   }, [ready, characterId, threads]);
 
   useEffect(() => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const warm = () => {
+      synth.getVoices();
+    };
+    warm();
+    synth.addEventListener("voiceschanged", warm);
+    const keep = window.setInterval(() => {
+      if (synth.speaking) synth.resume();
+    }, 8000);
     return () => {
-      audioRef.current?.pause();
+      synth.removeEventListener("voiceschanged", warm);
+      window.clearInterval(keep);
+      synth.cancel();
     };
   }, []);
 
   function primeSpeech() {
-    const audio = audioRef.current ?? new Audio();
-    audioRef.current = audio;
-    audio.src = SILENT_WAV;
-    void audio.play().catch(() => undefined);
+    window.speechSynthesis?.cancel();
+  }
+
+  function unlockAudio() {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx.current) audioCtx.current = new Ctx();
+    void audioCtx.current.resume();
+  }
+
+  function cutSpeech() {
+    window.clearTimeout(speakTimer.current);
+    window.speechSynthesis?.cancel();
+    stopAudio.current?.();
+    stopAudio.current = null;
+  }
+
+  function nextSpeakToken() {
+    speakGen.current += 1;
+    cutSpeech();
+    return speakGen.current;
+  }
+
+  function haltSpeech() {
+    nextSpeakToken();
+  }
+
+  async function readyClip(base64: string, token: number) {
+    const ctx = audioCtx.current;
+    if (!ctx || !base64 || speakGen.current !== token) return null;
+    await ctx.resume();
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const buffer = await ctx.decodeAudioData(bytes.buffer);
+    if (speakGen.current !== token) return null;
+    return buffer;
+  }
+
+  function startClip(buffer: AudioBuffer, token: number) {
+    const ctx = audioCtx.current;
+    if (!ctx || speakGen.current !== token) return false;
+    cutSpeech();
+    if (speakGen.current !== token) return false;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    stopAudio.current = () => {
+      try {
+        source.stop();
+      } catch {
+        /* already stopped */
+      }
+    };
+    source.start();
+    return true;
+  }
+
+  async function playMp3(base64: string, token: number) {
+    const buffer = await readyClip(base64, token);
+    if (!buffer) return false;
+    return startClip(buffer, token);
+  }
+
+  async function castClip(id: CharacterId, text: string, budgetMs: number): Promise<string> {
+  const job = voice({ data: { text, characterId: id } })
+    .then((row) => row.audio)
+    .catch(() => "");
+  const clip = await Promise.race([job, waitMs(budgetMs)]);
+  if (clip || allowDeviceVoice(id)) return clip;
+  return Promise.race([job, waitMs(5000)]);
+}
+
+  async function speakLine(id: CharacterId, text: string, token: number, audio?: string) {
+    try {
+      unlockAudio();
+      let clip = audio ?? "";
+      if (!clip) clip = await castClip(id, text, allowDeviceVoice(id) ? 3200 : 7000);
+      if (speakGen.current !== token) return;
+      if (clip && (await playMp3(clip, token))) return;
+      if (allowDeviceVoice(id)) speakCantonese(text, token, id);
+    } catch {
+      if (speakGen.current === token && allowDeviceVoice(id)) speakCantonese(text, token, id);
+    }
+  }
+
+  function speakCantonese(text: string, token: number, id: CharacterId) {
+    const synth = window.speechSynthesis;
+    const line = text.replace(/\s+/g, " ").trim().slice(0, 320);
+    if (!synth || !line || speakGen.current !== token || !allowDeviceVoice(id)) {
+      if (!synth && speakGen.current === token && allowDeviceVoice(id)) setSpeakError("這部裝置未有廣東話朗讀");
+      return;
+    }
+    const start = () => {
+      if (speakGen.current !== token) return;
+      cutSpeech();
+      speakTimer.current = window.setTimeout(() => {
+        if (speakGen.current !== token) return;
+        const picked = cantoneseVoice(id);
+        if (!picked) return;
+        const utterance = new SpeechSynthesisUtterance(line);
+        utterance.voice = picked;
+        utterance.lang = picked.lang || "zh-HK";
+        utterance.rate = id === "fire" ? 1.02 : id === "wheel" ? 0.9 : 0.94;
+        utterance.pitch = id === "fire" ? 1.15 : id === "wheel" ? 0.7 : 0.8;
+        utterance.onerror = (event) => {
+          if (event.error === "canceled" || event.error === "interrupted") return;
+          if (speakGen.current !== token) return;
+          if (event.error === "not-allowed") setSpeakError("請再按一次，裝置先讀得出聲");
+        };
+        synth.cancel();
+        synth.resume();
+        synth.speak(utterance);
+        setSpeakError(null);
+      }, 40);
+    };
+    if (speechSynthesis.getVoices().some(isCantoneseVoice) || speakGen.current !== token) {
+      start();
+      return;
+    }
+    let begun = false;
+    const readyVoices = () => {
+      if (begun || speakGen.current !== token) return;
+      begun = true;
+      synth.removeEventListener("voiceschanged", readyVoices);
+      start();
+    };
+    synth.addEventListener("voiceschanged", readyVoices);
+    window.setTimeout(readyVoices, 400);
   }
 
   function select(id: CharacterId) {
+    const clip = filmRefs.current[id];
+    if (clip) {
+      clip.muted = true;
+      if (clip.ended) clip.currentTime = 0;
+      void clip.play();
+    }
+    setShowGreeting(true);
     setCharacterId(id);
     setLessonOpen(false);
     setError(null);
     setSpeakError(null);
     setHint("");
-    audioRef.current?.pause();
-    speakGen.current += 1;
+    const token = nextSpeakToken();
+    unlockAudio();
+    void speakLine(id, greetingSpeech(id), token);
   }
 
   function resumeWork() {
-    audioRef.current?.pause();
-    speakGen.current += 1;
+    haltSpeech();
     setCharacterId(null);
     setError(null);
   }
 
-  async function run(target: CharacterId, history: Msg[], gen: number) {
+  async function run(target: CharacterId, history: Msg[], gen: number, token: number) {
     if (!studentId) return;
     setPendingId(target);
     setError(null);
+    const personNow = getCharacter(target);
+    const started = performance.now();
+    let revealed = false;
+    const showTogether = (content: string, spoken: string, speakToken: number, buffer: AudioBuffer | null) => {
+      const reply: Msg = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content,
+        lens: "經驗",
+        think: "",
+      };
+      setThreads((prev) => ({ ...prev, [target]: [...history, reply].slice(-20) }));
+      setPendingId(null);
+      if (characterRef.current !== target || speakGen.current !== speakToken) return;
+      unlockAudio();
+      if (buffer && startClip(buffer, speakToken)) return;
+      speakCantonese(spoken, speakToken, target);
+    };
+    const slow = window.setTimeout(() => {
+      if (chatGen.current[target] !== gen || revealed || !allowDeviceVoice(target)) return;
+      revealed = true;
+      showTogether(
+        `我在。請先問我遇到甚麼生活難題，再問我怎樣解決。`,
+        `我喺度呀。請你先問我遇到咩生活難題，再問我點樣解決。`,
+        token,
+        null,
+      );
+    }, 4800);
     try {
       const result = await ask({
         data: {
@@ -235,12 +439,28 @@ export function CampApp() {
           messages: history.slice(-6).map(({ role, content }) => ({ role, content })),
         },
       });
+      window.clearTimeout(slow);
       if (chatGen.current[target] !== gen) return;
-      if (!result.ok) {
-        if (characterRef.current === target) setError(result.error);
-        return;
-      }
       if (result.locked) setBanned(true);
+      const spoken = result.speak || result.reply;
+      const speakToken = revealed ? nextSpeakToken() : token;
+      let buffer: AudioBuffer | null = null;
+      if (!revealed && characterRef.current === target) {
+        let clip = result.audio || "";
+        if (!clip) {
+          const left = Math.max(idWait(target), 4700 - (performance.now() - started));
+          clip = await castClip(target, spoken, left);
+        }
+        if (clip && chatGen.current[target] === gen && speakGen.current === speakToken) {
+          try {
+            buffer = await readyClip(clip, speakToken);
+          } catch {
+            buffer = null;
+          }
+        }
+      }
+      if (chatGen.current[target] !== gen) return;
+      revealed = true;
       const reply: Msg = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -249,12 +469,18 @@ export function CampApp() {
         think: result.think,
       };
       setThreads((prev) => ({ ...prev, [target]: [...history, reply].slice(-20) }));
-      if (characterRef.current === target && result.audio) playReady(result.mime, result.audio);
+      setPendingId(null);
+      if (characterRef.current !== target || speakGen.current !== speakToken) return;
+      unlockAudio();
+      if (buffer && startClip(buffer, speakToken)) return;
+      speakCantonese(spoken, speakToken, target);
     } catch {
-      if (chatGen.current[target] === gen && characterRef.current === target) {
-        setError(`${getCharacter(target).name}聽不清楚，請再送出一次。`);
+      window.clearTimeout(slow);
+      if (!revealed && chatGen.current[target] === gen && characterRef.current === target) {
+        setError(`${personNow.name}聽不清楚，請再送出一次。`);
       }
     } finally {
+      window.clearTimeout(slow);
       if (chatGen.current[target] === gen) setPendingId(null);
     }
   }
@@ -265,11 +491,14 @@ export function CampApp() {
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: trimmed };
     const history = [...threads[characterId], userMsg].slice(-20);
     const gen = ++chatGen.current[characterId];
+    const token = nextSpeakToken();
+    unlockAudio();
+    setShowGreeting(false);
     setThreads((prev) => ({ ...prev, [characterId]: history }));
     setDraft("");
     setHint("");
     primeSpeech();
-    void run(characterId, history, gen);
+    void run(characterId, history, gen, token);
   }
 
   function retry() {
@@ -277,67 +506,38 @@ export function CampApp() {
     const history = threads[characterId];
     if (history[history.length - 1]?.role !== "user") return;
     const gen = ++chatGen.current[characterId];
+    const token = nextSpeakToken();
     primeSpeech();
-    void run(characterId, history, gen);
+    void run(characterId, history, gen, token);
   }
 
   function resetChat() {
     if (pendingId || !characterId || !person) return;
     chatGen.current[characterId] += 1;
-    audioRef.current?.pause();
-    speakGen.current += 1;
+    haltSpeech();
     setError(null);
     setThreads((prev) => ({ ...prev, [characterId]: [greeting(person)] }));
   }
 
-  function playReady(mime: string, audioB64: string) {
-    if (!audioB64) return;
-    const gen = ++speakGen.current;
-    const audio = audioRef.current ?? new Audio();
-    audioRef.current = audio;
-    audio.pause();
-    setSpeakError(null);
-    audio.src = `data:${mime || "audio/mpeg"};base64,${audioB64}`;
-    void audio.play().catch(() => {
-      if (gen === speakGen.current) setSpeakError("暫時未能朗讀");
-    });
-  }
-
   const spots: Record<CharacterId, { name: CSSProperties; bubble: CSSProperties; doing: string }> = {
-    fire: {
-      name: { left: "13%", top: "45%" },
-      bubble: { left: "24%", top: "48%", width: "min(22%, 200px)" },
-      doing: "生火中",
-    },
-    wheel: {
-      name: { left: "34%", top: "25%" },
-      bubble: { left: "50%", top: "8%", width: "min(20%, 188px)" },
-      doing: "推大石",
-    },
-    bridge: {
-      name: { left: "78%", top: "6%" },
-      bubble: { left: "80%", top: "14%", width: "min(16%, 176px)" },
-      doing: "過橋中",
-    },
+    fire: { name: { left: "13%", top: "45%" }, bubble: { left: "24%", top: "48%", width: "min(22%, 200px)" }, doing: "生火中" },
+    wheel: { name: { left: "34%", top: "25%" }, bubble: { left: "50%", top: "8%", width: "min(20%, 188px)" }, doing: "推大石" },
+    bridge: { name: { left: "78%", top: "6%" }, bubble: { left: "80%", top: "14%", width: "min(16%, 176px)" }, doing: "過橋中" },
   };
   const latest = [...messages].reverse().find((message) => message.role === "assistant");
   const asked = messages.some((message) => message.role === "user");
-  const showBubble = Boolean(person);
   const lessonPerson = person ?? getCharacter("fire");
-  const film: FilmId =
-    characterId === "fire" || characterId === "wheel" || characterId === "bridge" ? characterId : "idle";
+  const film: FilmId = characterId === "fire" || characterId === "wheel" || characterId === "bridge" ? characterId : "idle";
   const tailOnLeft = person?.id === "fire" || person?.id === "wheel" || person?.id === "bridge";
 
   return (
     <main className="relative h-dvh overflow-hidden bg-ink text-ink">
-      <p className="sr-only">
-        按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。
-      </p>
+      <p className="sr-only">按下正在生火、推車或過橋的古人，他們會停下來。在最底打字發問，答案會出現在他們旁邊的對話泡泡。</p>
       <div className="scene-slot relative h-full">
         <img src="/ancients/valley.jpg" alt="" className="absolute inset-0 h-full w-full object-cover blur-md" />
         <div className="absolute inset-0 grid place-items-center">
           <div className="stage">
-            <CampFilm active={film} onReady={() => setFilmReady(true)} />
+            <CampFilm active={film} filmsRef={filmRefs} onReady={() => setSceneReady(true)} />
             <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-2xl bg-sheet/90 px-3 py-2">
               <p className="text-sm font-medium text-meadow">小學科學 · 科學與科技</p>
               <h1 className="font-display text-3xl leading-none text-ink">古人問一問</h1>
@@ -352,30 +552,28 @@ export function CampApp() {
               本課重點
             </button>
             {(Object.keys(spots) as CharacterId[]).map((id) => {
-                const item = getCharacter(id);
-                const spot = spots[id];
-                const paused = characterId === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => select(id)}
-                    aria-pressed={paused}
-                    aria-label={paused ? `${item.name}望住你，打個招呼` : `按下${item.name}，叫${item.name}停低打招呼`}
-                    className="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet"
-                    style={spot.name}
-                  >
-                    {item.name} · {spot.doing}
-                  </button>
-                );
-              })}
-            {person && showBubble ? (
+              const item = getCharacter(id);
+              const spot = spots[id];
+              const paused = characterId === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => select(id)}
+                  aria-pressed={paused}
+                  aria-label={paused ? `${item.name}望住你，打個招呼` : `按下${item.name}，叫${item.name}停低打招呼`}
+                  className="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-meadow-deep/90 px-2.5 py-1 text-sm font-medium whitespace-nowrap text-paper touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sheet"
+                  style={spot.name}
+                >
+                  {item.name} · {spot.doing}
+                </button>
+              );
+            })}
+            {person ? (
               <div className="say" style={spots[person.id].bubble} role="status">
                 <span
                   aria-hidden
-                  className={`absolute size-3 rotate-45 border border-line bg-sheet ${
-                    tailOnLeft ? "-left-1.5 top-8 border-t-0 border-r-0" : "-right-1.5 top-8 border-b-0 border-l-0"
-                  }`}
+                  className={`absolute size-3 rotate-45 border border-line bg-sheet ${tailOnLeft ? "-left-1.5 top-8 border-t-0 border-r-0" : "-right-1.5 top-8 border-b-0 border-l-0"}`}
                 />
                 <div className="max-h-44 overflow-auto rounded-2xl border border-line bg-sheet/95 px-3 py-2 shadow-lg">
                   <p className="text-sm font-medium text-meadow">{person.name}</p>
@@ -384,15 +582,13 @@ export function CampApp() {
                   ) : error ? (
                     <div role="alert">
                       <p className="mt-1 text-pretty">{error}</p>
-                      <button
-                        type="button"
-                        onClick={retry}
-                        className="mt-1 min-h-11 font-medium text-ember focus-visible:ring-2 focus-visible:ring-ember"
-                      >
+                      <button type="button" onClick={retry} className="mt-1 min-h-11 font-medium text-ember focus-visible:ring-2 focus-visible:ring-ember">
                         再送出一次
                       </button>
                     </div>
-                  ) : asked && latest ? (
+                  ) : showGreeting || !(asked && latest) ? (
+                    <p className="mt-1 text-pretty">{person.greeting}</p>
+                  ) : (
                     <>
                       <p className="mt-1 text-pretty">{latest.content}</p>
                       {latest.lens ? (
@@ -402,16 +598,10 @@ export function CampApp() {
                         </p>
                       ) : null}
                     </>
-                  ) : (
-                    <p className="mt-1 text-pretty">{person.greeting}</p>
                   )}
                   {speakError ? <p className="mt-1 text-sm text-muted">{speakError}</p> : null}
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={resumeWork}
-                      className="min-h-11 rounded-full px-2 text-sm focus-visible:ring-2 focus-visible:ring-meadow"
-                    >
+                    <button type="button" onClick={resumeWork} className="min-h-11 rounded-full px-2 text-sm focus-visible:ring-2 focus-visible:ring-meadow">
                       繼續工作
                     </button>
                     <button
@@ -433,9 +623,7 @@ export function CampApp() {
           <div className="absolute inset-x-3 top-16 z-20 max-h-[70%] overflow-y-auto md:inset-x-auto md:right-3 md:w-96">
             <div className="rounded-2xl border border-line bg-sheet p-4">
               <h2 className="font-display text-3xl leading-none">本課要記住</h2>
-              <p className="mt-2 text-sm text-pretty text-muted">
-                學習目標：知道科學發現能促進科技的發展，而科技的發展亦能推動科學進步。
-              </p>
+              <p className="mt-2 text-sm text-pretty text-muted">學習目標：知道科學發現能促進科技的發展，而科技的發展亦能推動科學進步。</p>
               <ul className="mt-3 flex flex-col gap-2">
                 {CHARACTERS.map((item) => {
                   const shown = lessonPerson.id === item.id;
@@ -447,9 +635,9 @@ export function CampApp() {
                         onClick={() => select(item.id)}
                         className={`w-full rounded-xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-meadow ${shown ? "border-meadow bg-paper" : "border-transparent bg-paper"}`}
                       >
-                        <span className="block text-sm text-muted">{item.problem}</span>
+                        <span className="block text-sm text-muted">生活難題：{item.problem}</span>
                         <span className="block font-medium">
-                          {item.method}
+                          解決：{item.method}
                           <span className="ml-2 font-normal text-meadow">{item.science}</span>
                         </span>
                       </button>
@@ -485,7 +673,23 @@ export function CampApp() {
             submit(draft);
           }}
         >
-          <div className="pointer-events-auto mx-auto flex max-w-3xl gap-2">
+          <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
+            {person ? (
+              <div className="flex flex-wrap gap-2">
+                {person.prompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    disabled={Boolean(pendingId)}
+                    onClick={() => submit(prompt)}
+                    className="min-h-11 rounded-full border border-line bg-sheet/95 px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-meadow disabled:opacity-50"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex gap-2">
             <label htmlFor="ask" className="sr-only">
               {person ? `問${person.name}` : "先選擇一位古人"}
             </label>
@@ -509,16 +713,19 @@ export function CampApp() {
               <Send className="size-4" aria-hidden />
               送出
             </button>
+            </div>
           </div>
           {hint ? <p className="sr-only">{hint}</p> : null}
         </form>
       </div>
-      {booted ? null : (
-        <div className="absolute inset-0 z-40 grid place-items-center bg-ink/80 text-paper">
+      {sceneReady ? null : (
+        <div className="absolute inset-0 z-[70] grid place-items-center bg-ink text-paper">
           <p className="font-display text-4xl">加載中</p>
         </div>
       )}
-      {banned ? <BannedNotice /> : studentId ? null : <StudentGate onReady={setStudentId} onBanned={() => setBanned(true)} />}
+      {sceneReady ? (
+        banned ? <BannedNotice /> : studentId ? null : <StudentGate onReady={setStudentId} onBanned={() => setBanned(true)} />
+      ) : null}
     </main>
   );
 }
@@ -553,10 +760,7 @@ function StudentGate({ onReady, onBanned }: { onReady: (id: string) => void; onB
 
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-ink/55 p-4">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-md rounded-3xl border border-line bg-sheet p-6 shadow-lg"
-      >
+      <form onSubmit={submit} className="w-full max-w-md rounded-3xl border border-line bg-sheet p-6 shadow-lg">
         <p className="text-sm font-medium text-meadow">小學科學 · 科學與科技</p>
         <h1 className="font-display text-5xl leading-none text-ink">先寫低你的資料</h1>
         <p className="mt-2 text-pretty text-muted">寫好姓名、班別同學號，就可以同古人傾偈。</p>
@@ -576,28 +780,37 @@ function StudentGate({ onReady, onBanned }: { onReady: (id: string) => void; onB
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block text-sm font-medium" htmlFor="student-class">
             班別
-            <input
+            <select
               id="student-class"
               required
-              maxLength={12}
               value={className}
               onChange={(event) => setClassName(event.target.value)}
-              placeholder="例如：5A"
               className="mt-1 h-12 w-full rounded-2xl border border-line bg-paper px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-meadow"
-            />
+            >
+              <option value="">請選擇</option>
+              {["5A", "5B", "5C", "5D", "5E"].map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block text-sm font-medium" htmlFor="student-no">
             學號
-            <input
+            <select
               id="student-no"
               required
-              inputMode="numeric"
-              maxLength={6}
               value={studentNo}
               onChange={(event) => setStudentNo(event.target.value)}
-              placeholder="例如：12"
               className="mt-1 h-12 w-full rounded-2xl border border-line bg-paper px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-meadow"
-            />
+            >
+              <option value="">請選擇</option>
+              {Array.from({ length: 35 }, (_, index) => String(index + 1)).map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
         {error ? (
